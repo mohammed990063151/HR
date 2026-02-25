@@ -1,0 +1,195 @@
+/* =======================
+   RTL Base
+======================= */
+
+html[dir="rtl"] body {
+    direction: rtl;
+    text-align: right;
+    font-family: "Tajawal", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+
+/* =======================
+   Sidebar (Clean Modern)
+======================= */
+
+html[dir="rtl"] .sidebar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: auto;
+    width: 270px;
+    height: 100vh;
+    background: #0b1220;
+    /* أغمق شوي */
+    border-left: 1px solid rgba(255, 255, 255, .06);
+    z-index: 1040;
+    transition: transform .28s ease;
+}
+
+html[dir="rtl"] .sidebar-inner {
+    height: 100%;
+    overflow-y: auto;
+    padding: 12px 10px;
+}
+
+
+/* Titles */
+
+html[dir="rtl"] .sidebar .menu-title {
+    padding: 14px 10px 6px;
+    margin: 10px 0 4px;
+}
+
+html[dir="rtl"] .sidebar .menu-title span {
+    color: rgba(255, 255, 255, .55);
+    font-size: 12px;
+}
+
+
+/* Links */
+
+html[dir="rtl"] .sidebar-menu ul li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 2px 0;
+    /* بدل 6px (كانت تعمل شكل أزرار متباعدة) */
+    border-radius: 10px;
+    color: rgba(255, 255, 255, .82);
+    transition: background .15s ease;
+    font-weight: 500;
+    line-height: 1.2;
+    width: 100%;
+}
+
+html[dir="rtl"] .sidebar-menu ul li a i {
+    font-size: 18px;
+    width: 22px;
+    text-align: center;
+    opacity: .95;
+}
+
+html[dir="rtl"] .sidebar-menu ul li a:hover {
+    background: rgba(255, 255, 255, .08);
+}
+
+
+/* Active */
+
+html[dir="rtl"] .sidebar-menu ul li.active>a,
+html[dir="rtl"] .sidebar-menu ul li a.active {
+    background: rgba(59, 130, 246, .18);
+    outline: 1px solid rgba(59, 130, 246, .25);
+    color: #fff;
+}
+
+
+/* Arrow RTL */
+
+html[dir="rtl"] .sidebar-menu .menu-arrow {
+    margin-right: auto;
+    opacity: .6;
+}
+
+
+/* =======================
+   Submenu (Indent, not Card)
+======================= */
+
+html[dir="rtl"] .sidebar-menu .submenu>ul {
+    margin: 6px 0 10px;
+    padding: 6px 0;
+    background: transparent;
+    /* شيل الكارد */
+    border: 0;
+}
+
+html[dir="rtl"] .sidebar-menu .submenu>ul>li>a {
+    padding: 9px 12px;
+    margin: 2px 0;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, .75);
+}
+
+
+/* Indent under parent (RTL) */
+
+html[dir="rtl"] .sidebar-menu .submenu>ul {
+    padding-right: 18px;
+}
+
+
+/* Optional: subtle divider line */
+
+html[dir="rtl"] .sidebar-menu .submenu>ul>li>a::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .18);
+    display: inline-block;
+    margin-left: 10px;
+    /* RTL */
+}
+
+
+/* =======================
+   Overlay (Mobile)
+======================= */
+
+.sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .45);
+    z-index: 1039;
+    display: none;
+}
+
+.sidebar-overlay.show {
+    display: block;
+}
+
+
+/* =======================
+   Responsive
+======================= */
+
+
+/* Desktop spacing */
+
+@media (min-width: 992px) {
+    html[dir="rtl"] .page-wrapper,
+    html[dir="rtl"] .main-content {
+        margin-right: 270px;
+        margin-left: 0;
+    }
+}
+
+
+/* Mobile: Off-canvas */
+
+@media (max-width: 991.98px) {
+    html[dir="rtl"] .sidebar {
+        width: 82%;
+        max-width: 340px;
+        transform: translateX(110%);
+        /* مخفي */
+        box-shadow: -24px 0 60px rgba(0, 0, 0, .45);
+    }
+    html[dir="rtl"] .sidebar.open {
+        transform: translateX(0);
+    }
+    html[dir="rtl"] .page-wrapper,
+    html[dir="rtl"] .main-content {
+        margin-right: 0 !important;
+    }
+}
+
+
+/* Lock scroll when open */
+
+body.sidebar-open {
+    overflow: hidden;
+}
