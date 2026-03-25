@@ -277,6 +277,7 @@ class UserManagementController extends Controller
     /** Save new user */
     public function addNewUserSave(Request $request)
     {
+        // return $request->all();
         $request->validate([
             'name'      => 'required|string|max:255',
             'email'     => 'required|string|email|max:255|unique:users',
@@ -289,7 +290,7 @@ class UserManagementController extends Controller
             'password'  => 'required|string|min:8|confirmed',
             'password_confirmation' => 'required',
         ]);
-
+// return $request->all();
         DB::beginTransaction();
         try {
             $todayDate = Carbon::now()->toDayDateTimeString();

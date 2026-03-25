@@ -137,7 +137,7 @@
                                 <div class="col-sm-6">  
                                     <div class="form-group">
                                         <label class="col-form-label"> رقم التعريفي الموظف  <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="Auto id employee" readonly>
+                                        <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="Auto id employee" >
                                     </div>
                                 </div>
                                 <div class="col-sm-6">

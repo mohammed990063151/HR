@@ -1,756 +1,747 @@
+@extends('layouts.master')
+@section('content')
 
- @extends('layouts.master')
-@section('content') 
-<?php
-     $hour   = date ("G");
-        $minute = date ("i");
-        $second = date ("s");
-        $msg = " Today is " . date ("l, M. d, Y.");
+@php
+    use Carbon\Carbon;
+    use Illuminate\Support\Facades\DB;
+    use Illuminate\Support\Facades\Schema;
 
-        if ($hour == 00 && $hour <= 9 && $minute <= 59 && $second <= 59) {
-            $greet = "Good Morning,";
-        } else if ($hour >= 10 && $hour <= 11 && $minute <= 59 && $second <= 59) {
-            $greet = "Good Day,";
-        } else if ($hour >= 12 && $hour <= 15 && $minute <= 59 && $second <= 59) {
-            $greet = "Good Afternoon,";
-        } else if ($hour >= 16 && $hour <= 23 && $minute <= 59 && $second <= 59) {
-            $greet = "Good Evening,";
-        } else {
-            $greet = "Welcome,";
+    // ══════════════════════════════════════
+    // التحية حسب الوقت
+    // ══════════════════════════════════════
+    $hour = (int) date('G');
+    if      ($hour >= 0  && $hour <= 9)  $greet = 'صباح الخير،';
+    elseif  ($hour >= 10 && $hour <= 11) $greet = 'نهارك سعيد،';
+    elseif  ($hour >= 12 && $hour <= 15) $greet = 'مساء الخير،';
+    else                                  $greet = 'مساء النور،';
+
+    $today      = Carbon::today();
+    $monthStart = Carbon::now()->startOfMonth();
+
+    // ══════════════════════════════════════
+    // اكتشاف اسم العمود الصحيح في جدول departments
+    // ══════════════════════════════════════
+    $deptColumns   = Schema::getColumnListing('departments');
+    $deptNameCol   = collect($deptColumns)->first(fn($c) => in_array(strtolower($c), ['name','dept_name','department_name','title'])) ?? $deptColumns[1] ?? 'name';
+
+    // ══════════════════════════════════════
+    // أرقام البطاقات
+    // ══════════════════════════════════════
+    $totalEmployees   = DB::table('employees')->count();
+    $totalDepartments = DB::table('departments')->count();
+    $pendingLeaves    = DB::table('leaves')->whereIn('status', ['pending','Pending'])->count();
+
+    $presentToday = DB::table('zk_attendance_logs')
+        ->whereDate('timestamp', $today)
+        ->distinct('user_id')->count('user_id');
+
+    $absentToday = max(0, $totalEmployees - $presentToday);
+
+    $newEmployeesCount = DB::table('employees')
+        ->where('created_at', '>=', Carbon::now()->subDays(30))->count();
+
+    // ══════════════════════════════════════
+    // الإجازات هذا الشهر
+    // ══════════════════════════════════════
+    $leavesMonth = DB::table('leaves')
+        ->whereMonth('created_at', $today->month)
+        ->whereYear('created_at',  $today->year)
+        ->select('status', DB::raw('COUNT(*) as count'))
+        ->groupBy('status')->get()->keyBy(fn($r) => strtolower($r->status));
+
+    $leaveApproved = $leavesMonth->get('approved')?->count ?? 0;
+    $leavePending  = $leavesMonth->get('pending')?->count  ?? 0;
+    $leaveRejected = $leavesMonth->get('rejected')?->count ?? 0;
+    $leaveTotal    = max(1, $leaveApproved + $leavePending + $leaveRejected);
+
+    // ══════════════════════════════════════
+    // الرواتب
+    // ══════════════════════════════════════
+    $salaryThisMonth = DB::table('staff_salaries')
+        ->whereMonth('created_at', $today->month)
+        ->whereYear('created_at',  $today->year)
+        ->sum('salary') ?: 0;
+
+    $salaryLastMonth = DB::table('staff_salaries')
+        ->whereMonth('created_at', $today->copy()->subMonth()->month)
+        ->whereYear('created_at',  $today->copy()->subMonth()->year)
+        ->sum('salary') ?: 0;
+
+    $maxSalary  = max(1, $salaryThisMonth, $salaryLastMonth);
+
+    // ══════════════════════════════════════
+    // ساعات العمل هذا الشهر
+    // ══════════════════════════════════════
+    try {
+        $hoursRows = DB::table('zk_attendance_logs')
+            ->join('employees','employees.id','=','zk_attendance_logs.user_id')
+            ->whereBetween('zk_attendance_logs.timestamp', [$monthStart, Carbon::now()])
+            ->select(DB::raw('
+                TIMESTAMPDIFF(MINUTE,
+                    MIN(zk_attendance_logs.timestamp),
+                    MAX(zk_attendance_logs.timestamp)
+                ) as mins
+            '))
+            ->groupBy('employees.id', DB::raw('DATE(zk_attendance_logs.timestamp)'))
+            ->get();
+        $totalHoursMonth = round($hoursRows->sum('mins') / 60, 1);
+    } catch (\Exception $e) {
+        $totalHoursMonth = 0;
+    }
+
+    // ══════════════════════════════════════
+    // الأقسام مع عدد الموظفين (إصلاح اسم العمود)
+    // ══════════════════════════════════════
+    try {
+        $departments = DB::table('departments')
+            ->leftJoin('employees','employees.department_id','=','departments.id')
+            ->select(
+                DB::raw("departments.`{$deptNameCol}` as dept_name"),
+                DB::raw('COUNT(employees.id) as emp_count')
+            )
+            ->groupBy('departments.id', DB::raw("departments.`{$deptNameCol}`"))
+            ->orderBy('emp_count','desc')
+            ->limit(6)->get();
+    } catch (\Exception $e) {
+        $departments = collect();
+    }
+
+    // ══════════════════════════════════════
+    // حضور اليوم
+    // ══════════════════════════════════════
+    try {
+        $recentAttendance = DB::table('zk_attendance_logs')
+            ->join('employees','employees.id','=','zk_attendance_logs.user_id')
+            ->select([
+                'employees.name as employee_name',
+                DB::raw('MIN(zk_attendance_logs.timestamp) as check_in'),
+                DB::raw('MAX(zk_attendance_logs.timestamp) as check_out'),
+            ])
+            ->whereDate('zk_attendance_logs.timestamp', $today)
+            ->groupBy('employees.id','employees.name')
+            ->orderBy('check_in','desc')
+            ->limit(8)->get();
+    } catch (\Exception $e) {
+        $recentAttendance = collect();
+    }
+
+    // ══════════════════════════════════════
+    // الغائبون اليوم
+    // ══════════════════════════════════════
+    try {
+        $presentIds      = DB::table('zk_attendance_logs')->whereDate('timestamp',$today)->pluck('user_id');
+        $absentEmployees = DB::table('employees')->whereNotIn('id',$presentIds)
+            ->select('name','employee_id')->limit(5)->get();
+    } catch (\Exception $e) {
+        $absentEmployees = collect();
+    }
+
+    // ══════════════════════════════════════
+    // الموظفون الجدد
+    // ══════════════════════════════════════
+    try {
+        $newEmployees = DB::table('employees')
+            ->where('created_at','>=', Carbon::now()->subDays(30))
+            ->select('name','employee_id','created_at')
+            ->orderBy('created_at','desc')->limit(5)->get();
+    } catch (\Exception $e) {
+        $newEmployees = collect();
+    }
+
+    // ══════════════════════════════════════
+    // بيانات الرسم البياني - آخر 7 أيام
+    // ══════════════════════════════════════
+    $chartDays = []; $chartPresent = []; $chartAbsent = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $day = Carbon::now()->subDays($i);
+        try {
+            $cnt = DB::table('zk_attendance_logs')
+                ->whereDate('timestamp', $day)
+                ->distinct('user_id')->count('user_id');
+        } catch (\Exception $e) {
+            $cnt = 0;
         }
-    ?>
-    <div class="page-wrapper">
-        <!-- Page Content -->
-        <div class="content container-fluid">
-            <!-- Page Header -->
-            <div class="page-header">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <h3 class="page-title">{{ $greet }} Welcome, {{ Session::get('name') }}!</h3>
-                        <ul class="breadcrumb">
-                            <li class="breadcrumb-item active">لوحة التحكم</li>
-                        </ul>
+        $chartDays[]    = $day->locale('ar')->isoFormat('dd D/M');
+        $chartPresent[] = $cnt;
+        $chartAbsent[]  = max(0, $totalEmployees - $cnt);
+    }
+
+    // نسبة الحضور اليوم
+    $attendanceRate = $totalEmployees > 0 ? round($presentToday / $totalEmployees * 100) : 0;
+@endphp
+
+{{-- ══════════════ STYLES ══════════════ --}}
+<style>
+:root {
+    --primary:       #4f46e5;
+    --primary-light: #818cf8;
+    --primary-pale:  rgba(79,70,229,.10);
+    --success:       #10b981;
+    --success-pale:  rgba(16,185,129,.12);
+    --danger:        #ef4444;
+    --danger-pale:   rgba(239,68,68,.12);
+    --warning:       #f59e0b;
+    --warning-pale:  rgba(245,158,11,.12);
+    --info:          #06b6d4;
+    --info-pale:     rgba(6,182,212,.12);
+    --purple:        #8b5cf6;
+    --purple-pale:   rgba(139,92,246,.12);
+    --text:          #1e293b;
+    --text-muted:    #64748b;
+    --border:        rgba(15,23,42,.07);
+    --card-bg:       #ffffff;
+    --page-bg:       #f8fafc;
+    --radius:        14px;
+    --shadow:        0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    --shadow-hover:  0 4px 20px rgba(79,70,229,.15);
+    --transition:    .22s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── Page wrapper ── */
+.hr-dash { background: var(--page-bg); min-height: 100vh; padding: 0 0 40px; }
+
+/* ── Header ── */
+.hr-header { margin-bottom: 28px; }
+.hr-header h3 { font-size: 1.55rem; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+.hr-header .sub { font-size: .88rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.hr-header .sub i { color: var(--primary); }
+
+/* ── Stat cards ── */
+.stat-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 20px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid var(--border);
+    transition: box-shadow var(--transition), transform var(--transition);
+    height: 100%;
+}
+.stat-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.stat-icon {
+    width: 52px; height: 52px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 22px;
+}
+.stat-body { flex: 1; min-width: 0; }
+.stat-body h3 { font-size: 1.65rem; font-weight: 800; color: var(--text); margin: 0 0 2px; line-height: 1; }
+.stat-body span { font-size: .8rem; color: var(--text-muted); font-weight: 500; }
+.stat-badge { font-size: .72rem; padding: 3px 8px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+
+/* ── Cards ── */
+.hr-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    height: 100%;
+}
+.hr-card .hr-card-head {
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+}
+.hr-card .hr-card-head h5 {
+    font-size: .95rem; font-weight: 700; color: var(--text); margin: 0;
+    display: flex; align-items: center; gap: 8px;
+}
+.hr-card .hr-card-body { padding: 20px; }
+.hr-card .hr-card-body.p-0 { padding: 0; }
+
+/* ── Btn outline ── */
+.btn-outline-primary {
+    font-size: .78rem; padding: 5px 12px; border-radius: 8px;
+    border: 1.5px solid var(--primary); color: var(--primary);
+    background: transparent; font-weight: 600;
+    transition: background var(--transition), color var(--transition);
+    text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+}
+.btn-outline-primary:hover { background: var(--primary); color: #fff; }
+
+/* ── Table ── */
+.hr-table { width: 100%; border-collapse: collapse; }
+.hr-table thead th {
+    font-size: .76rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--text-muted);
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    background: #fafbfc; white-space: nowrap;
+}
+.hr-table tbody td {
+    padding: 11px 16px; border-bottom: 1px solid var(--border);
+    font-size: .875rem; color: var(--text); vertical-align: middle;
+}
+.hr-table tbody tr:last-child td { border-bottom: none; }
+.hr-table tbody tr:hover td { background: rgba(79,70,229,.03); }
+
+/* ── Avatar ── */
+.emp-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: #fff; flex-shrink: 0;
+}
+
+/* ── Badge ── */
+.badge-soft {
+    font-size: .72rem; padding: 3px 9px; border-radius: 20px;
+    font-weight: 600; display: inline-block;
+}
+.badge-soft.success { background: var(--success-pale); color: #059669; }
+.badge-soft.danger  { background: var(--danger-pale);  color: #dc2626; }
+.badge-soft.warning { background: var(--warning-pale); color: #d97706; }
+.badge-soft.info    { background: var(--info-pale);    color: #0891b2; }
+.badge-soft.primary { background: var(--primary-pale); color: var(--primary); }
+
+/* ── Progress ── */
+.hr-progress { height: 6px; border-radius: 10px; background: rgba(0,0,0,.06); overflow: hidden; margin-top: 6px; }
+.hr-progress .bar { height: 100%; border-radius: 10px; transition: width .6s ease; }
+
+/* ── Leave stats ── */
+.leave-stat { margin-bottom: 16px; }
+.leave-stat:last-child { margin-bottom: 0; }
+.leave-stat .ls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.leave-stat .ls-row span { font-size: .84rem; color: var(--text-muted); font-weight: 500; }
+.leave-stat .ls-row strong { font-size: .84rem; color: var(--text); font-weight: 700; }
+
+/* ── Employee list item ── */
+.emp-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.emp-item:last-child { border-bottom: none; }
+.emp-info { flex: 1; min-width: 0; }
+.emp-info .name { font-size: .875rem; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.emp-info .sub  { font-size: .76rem; color: var(--text-muted); margin-top: 1px; }
+
+/* ── Rate ring ── */
+.rate-ring-wrap { text-align: center; margin-bottom: 12px; }
+.rate-ring-wrap .rate-num { font-size: 2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.rate-ring-wrap .rate-lbl { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+
+/* ── Section divider ── */
+.sec-divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+/* ── Chart card ── */
+.chart-wrap { position: relative; }
+
+/* ── Dept bar ── */
+.dept-row { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.dept-row:last-child { margin-bottom: 0; }
+.dept-name { font-size: .83rem; font-weight: 600; color: var(--text); min-width: 90px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0; text-align: right; }
+.dept-bar-wrap { flex: 1; }
+.dept-bar-track { height: 7px; border-radius: 10px; background: rgba(0,0,0,.06); overflow: hidden; }
+.dept-bar-fill  { height: 100%; border-radius: 10px; transition: width .7s ease; }
+.dept-count { font-size: .78rem; font-weight: 700; color: var(--text-muted); min-width: 28px; text-align: left; flex-shrink: 0; }
+
+/* ── Empty state ── */
+.empty-state { text-align: center; padding: 30px 20px; color: var(--text-muted); }
+.empty-state i { font-size: 2rem; margin-bottom: 8px; display: block; opacity: .4; }
+.empty-state p { font-size: .84rem; margin: 0; }
+
+/* ── Animate in ── */
+@keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+.anim { animation: fadeUp .4s ease both; }
+.anim-1 { animation-delay: .05s; }
+.anim-2 { animation-delay: .10s; }
+.anim-3 { animation-delay: .15s; }
+.anim-4 { animation-delay: .20s; }
+.anim-5 { animation-delay: .25s; }
+.anim-6 { animation-delay: .30s; }
+
+/* responsive */
+@media (max-width: 575px) {
+    .stat-body h3 { font-size: 1.35rem; }
+    .stat-icon { width: 44px; height: 44px; font-size: 18px; }
+}
+</style>
+<br /><br /><br  />
+<div class="page-wrapper hr-dash">
+<div class="content container-fluid">
+
+    {{-- ══ Header ══ --}}
+    <div class="page-header hr-header anim">
+        <h3>{{ $greet }} {{ Session::get('name') }}</h3>
+        <div class="sub">
+            <i class="fa fa-calendar-o"></i>
+            {{ Carbon::now()->locale('ar')->isoFormat('dddd، D MMMM YYYY') }}
+            &nbsp;·&nbsp;
+            <i class="fa fa-clock-o"></i>
+            {{ Carbon::now()->format('h:i A') }}
+        </div>
+    </div>
+
+    {{-- ══ Row 1: بطاقات الحضور ══ --}}
+    <div class="row g-3 mb-3">
+        @php
+        $r1 = [
+            ['icon'=>'fa-users',        'color'=>'var(--primary)', 'bg'=>'var(--primary-pale)', 'val'=>$totalEmployees,   'label'=>'إجمالي الموظفين', 'badge'=>null],
+            ['icon'=>'fa-check-circle', 'color'=>'var(--success)', 'bg'=>'var(--success-pale)', 'val'=>$presentToday,     'label'=>'حاضرون اليوم',    'badge'=>['class'=>'success','text'=>$attendanceRate.'%']],
+            ['icon'=>'fa-times-circle', 'color'=>'var(--danger)',  'bg'=>'var(--danger-pale)',  'val'=>$absentToday,      'label'=>'غائبون اليوم',    'badge'=>$absentToday > 0 ? ['class'=>'danger','text'=>'يحتاج متابعة'] : null],
+            ['icon'=>'fa-clock-o',      'color'=>'var(--warning)', 'bg'=>'var(--warning-pale)', 'val'=>$pendingLeaves,    'label'=>'إجازات معلقة',    'badge'=>$pendingLeaves > 0 ? ['class'=>'warning','text'=>'بانتظار القرار'] : null],
+        ];
+        @endphp
+        @foreach($r1 as $i => $c)
+        <div class="col-6 col-md-3 anim anim-{{ $i+1 }}">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:{{ $c['bg'] }}; color:{{ $c['color'] }};">
+                    <i class="fa {{ $c['icon'] }}"></i>
+                </div>
+                <div class="stat-body">
+                    <h3>{{ number_format($c['val']) }}</h3>
+                    <span>{{ $c['label'] }}</span>
+                    @if($c['badge'])
+                    <div class="mt-1">
+                        <span class="badge-soft {{ $c['badge']['class'] }}">{{ $c['badge']['text'] }}</span>
                     </div>
+                    @endif
                 </div>
             </div>
-            <!-- /Page Header -->
-            <div class="row">
-                <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
-                    <div class="card dash-widget">
-                        <div class="card-body"> <span class="dash-widget-icon"><i class="fa fa-cubes"></i></span>
-                            <div class="dash-widget-info">
-                                <h3>112</h3> <span>المشاريع</span>
-                            </div>
-                        </div>
-                    </div>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- ══ Row 2: بطاقات ثانوية ══ --}}
+    <div class="row g-3 mb-3">
+        @php
+        $r2 = [
+            ['icon'=>'la la-building',     'color'=>'var(--purple)', 'bg'=>'var(--purple-pale)', 'val'=>$totalDepartments,     'label'=>'الأقسام'],
+            ['icon'=>'fa fa-user-plus',    'color'=>'var(--info)',   'bg'=>'var(--info-pale)',   'val'=>$newEmployeesCount,    'label'=>'موظفون جدد (٣٠ يوم)'],
+            ['icon'=>'fa fa-check',        'color'=>'var(--success)','bg'=>'var(--success-pale)','val'=>$leaveApproved,        'label'=>'إجازات موافق عليها'],
+            ['icon'=>'fa fa-hourglass-half','color'=>'var(--primary)','bg'=>'var(--primary-pale)','val'=>$totalHoursMonth.' س', 'label'=>'ساعات العمل هذا الشهر'],
+        ];
+        @endphp
+        @foreach($r2 as $i => $c)
+        <div class="col-6 col-md-3 anim anim-{{ $i+1 }}">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:{{ $c['bg'] }}; color:{{ $c['color'] }}; font-size:20px;">
+                    <i class="{{ $c['icon'] }}"></i>
                 </div>
-                <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
-                    <div class="card dash-widget">
-                        <div class="card-body"> <span class="dash-widget-icon"><i class="fa fa-usd"></i></span>
-                            <div class="dash-widget-info">
-                                <h3>44</h3> <span>العملاء</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
-                    <div class="card dash-widget">
-                        <div class="card-body"> <span class="dash-widget-icon"><i class="fa fa-diamond"></i></span>
-                            <div class="dash-widget-info">
-                                <h3>37</h3> <span>المهام</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6 col-sm-6 col-lg-6 col-xl-3">
-                    <div class="card dash-widget">
-                        <div class="card-body"> <span class="dash-widget-icon"><i class="fa fa-user"></i></span>
-                            <div class="dash-widget-info">
-                                <h3>218</h3> <span>الموظفين</span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="stat-body">
+                    <h3>{{ $c['val'] }}</h3>
+                    <span>{{ $c['label'] }}</span>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="row">
-                        <div class="col-md-6 text-center">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h3 class="card-title">إجمالي الإيرادات</h3>
-                                    <div id="bar-charts"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6 text-center">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h3 class="card-title">نظرة عامة على المبيعات</h3>
-                                    <div id="line-charts"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- ══ Chart + Stats ══ --}}
+    <div class="row g-3 mb-3">
+
+        <div class="col-md-8 anim anim-1">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5><i class="fa fa-bar-chart" style="color:var(--primary);font-size:.9rem;"></i> الحضور — آخر ٧ أيام</h5>
+                    <a href="{{ route('attendance/page') }}" class="btn-outline-primary">
+                        <i class="fa fa-external-link" style="font-size:.7rem;"></i> التفاصيل
+                    </a>
+                </div>
+                <div class="hr-card-body chart-wrap">
+                    <canvas id="attendanceChart" height="115"></canvas>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-md-12">
-                    <div class="card-group m-b-30">
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-3">
-                                    <div> <span class="d-block">الموظفين الجدد</span> </div>
-                                    <div> <span class="text-success">+10%</span> </div>
-                                </div>
-                                <h3 class="mb-3">10</h3>
-                                <div class="progress mb-2" style="height: 5px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <p class="mb-0">إجمالي عدد الموظفين 218</p>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-3">
-                                    <div> <span class="d-block">الإيرادات</span> </div>
-                                    <div> <span class="text-success">+12.5%</span> </div>
-                                </div>
-                                <h3 class="mb-3">$1,42,300</h3>
-                                <div class="progress mb-2" style="height: 5px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <p class="mb-0">الشهر السابق <span class="text-muted">$1,15,852</span></p>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-3">
-                                    <div> <span class="d-block">المصاريف</span> </div>
-                                    <div> <span class="text-danger">-2.8%</span> </div>
-                                </div>
-                                <h3 class="mb-3">$8,500</h3>
-                                <div class="progress mb-2" style="height: 5px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <p class="mb-0">الشهر السابق <span class="text-muted">$7,500</span></p>
-                            </div>
-                        </div>
-                        <div class="card">
-                            <div class="card-body">
-                                <div class="d-flex justify-content-between mb-3">
-                                    <div> <span class="d-block">ربح</span> </div>
-                                    <div> <span class="text-danger">-75%</span> </div>
-                                </div>
-                                <h3 class="mb-3">$1,12,000</h3>
-                                <div class="progress mb-2" style="height: 5px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%;" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                                <p class="mb-0">الشهر السابق <span class="text-muted">$1,42,000</span></p>
-                            </div>
+        </div>
+
+        <div class="col-md-4 anim anim-2">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5><i class="fa fa-umbrella" style="color:var(--warning);font-size:.9rem;"></i> إجازات الشهر</h5>
+                </div>
+                <div class="hr-card-body">
+                    {{-- نسبة الحضور ──────── --}}
+                    <div class="rate-ring-wrap">
+                        <div class="rate-num">{{ $attendanceRate }}%</div>
+                        <div class="rate-lbl">نسبة الحضور اليوم</div>
+                        <div class="hr-progress mt-2">
+                            <div class="bar" style="width:{{ $attendanceRate }}%; background: linear-gradient(90deg, var(--primary), var(--primary-light));"></div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <!-- Statistics Widget -->
-            <div class="row">
-                <div class="col-md-12 col-lg-12 col-xl-4 d-flex">
-                    <div class="card flex-fill dash-statistics">
-                        <div class="card-body">
-                            <h5 class="card-title">الإحصائيات</h5>
-                            <div class="stats-list">
-                                <div class="stats-info">
-                                    <p>الإجازات اليومية <strong>4 <small>/ 65</small></strong></p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-primary" role="progressbar" style="width: 31%" aria-valuenow="31" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                                <div class="stats-info">
-                                    <p>الفواتير المعلقة <strong>15 <small>/ 92</small></strong></p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 31%" aria-valuenow="31" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                                <div class="stats-info">
-                                    <p>مشاريع مكتملة <strong>85 <small>/ 112</small></strong></p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-success" role="progressbar" style="width: 62%" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                                <div class="stats-info">
-                                    <p>تذاكر مفتوحة <strong>190 <small>/ 212</small></strong></p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 62%" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                                <div class="stats-info">
-                                    <p>تذاكر مغلقة <strong>22 <small>/ 212</small></strong></p>
-                                    <div class="progress">
-                                        <div class="progress-bar bg-info" role="progressbar" style="width: 22%" aria-valuenow="22" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+                    <hr class="sec-divider">
+
+                    <div class="leave-stat">
+                        <div class="ls-row"><span>✅ موافق عليها</span><strong>{{ $leaveApproved }}</strong></div>
+                        <div class="hr-progress"><div class="bar" style="width:{{ round($leaveApproved/$leaveTotal*100) }}%; background:var(--success);"></div></div>
                     </div>
-                </div>
-                <div class="col-md-12 col-lg-6 col-xl-4 d-flex">
-                    <div class="card flex-fill">
-                        <div class="card-body">
-                            <h4 class="card-title">إحصائيات المهام</h4>
-                            <div class="statistics">
-                                <div class="row">
-                                    <div class="col-md-6 col-6 text-center">
-                                        <div class="stats-box mb-4">
-                                            <p>إجمالي المهام</p>
-                                            <h3>385</h3>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 col-6 text-center">
-                                        <div class="stats-box mb-4">
-                                            <p>المهام المتأخرة</p>
-                                            <h3>19</h3>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="progress mb-4">
-                                <div class="progress-bar bg-purple" role="progressbar" style="width: 30%" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">30%</div>
-                                <div class="progress-bar bg-warning" role="progressbar" style="width: 22%" aria-valuenow="18" aria-valuemin="0" aria-valuemax="100">22%</div>
-                                <div class="progress-bar bg-success" role="progressbar" style="width: 24%" aria-valuenow="12" aria-valuemin="0" aria-valuemax="100">24%</div>
-                                <div class="progress-bar bg-danger" role="progressbar" style="width: 26%" aria-valuenow="14" aria-valuemin="0" aria-valuemax="100">21%</div>
-                                <div class="progress-bar bg-info" role="progressbar" style="width: 10%" aria-valuenow="14" aria-valuemin="0" aria-valuemax="100">10%</div>
-                            </div>
-                            <div>
-                                <p><i class="fa fa-dot-circle-o text-purple mr-2"></i>المهام المكتملة <span class="float-right">166</span></p>
-                                <p><i class="fa fa-dot-circle-o text-warning mr-2"></i>المهام الجارية <span class="float-right">115</span></p>
-                                <p><i class="fa fa-dot-circle-o text-success mr-2"></i>المهام المعلقة <span class="float-right">31</span></p>
-                                <p><i class="fa fa-dot-circle-o text-danger mr-2"></i>المهام المعلقة <span class="float-right">47</span></p>
-                                <p class="mb-0"><i class="fa fa-dot-circle-o text-info mr-2"></i>مراجعات المهام <span class="float-right">5</span></p>
-                            </div>
-                        </div>
+                    <div class="leave-stat">
+                        <div class="ls-row"><span>⏳ قيد الانتظار</span><strong>{{ $leavePending }}</strong></div>
+                        <div class="hr-progress"><div class="bar" style="width:{{ round($leavePending/$leaveTotal*100) }}%; background:var(--warning);"></div></div>
                     </div>
-                </div>
-                <div class="col-md-12 col-lg-6 col-xl-4 d-flex">
-                    <div class="card flex-fill">
-                        <div class="card-body">
-                            <h4 class="card-title">اليوم غائب <span class="badge bg-inverse-danger ml-2">5</span></h4>
-                            <div class="leave-info-box">
-                                <div class="media align-items-center">
-                                    <a href="profile.html" class="avatar"><img alt="" src="assets/img/user.jpg"></a>
-                                    <div class="media-body">
-                                        <div class="text-sm my-0">مارتن لويس</div>
-                                    </div>
-                                </div>
-                                <div class="row align-items-center mt-3">
-                                    <div class="col-6">
-                                        <h6 class="mb-0">4 Sep 2019</h6> <span class="text-sm text-muted">تاريخ الإجازة</span> </div>
-                                    <div class="col-6 text-right"> <span class="badge bg-inverse-danger">قيد الانتظار</span> </div>
-                                </div>
-                            </div>
-                            <div class="leave-info-box">
-                                <div class="media align-items-center">
-                                    <a href="profile.html" class="avatar"><img alt="" src="assets/img/user.jpg"></a>
-                                    <div class="media-body">
-                                        <div class="text-sm my-0">محمد مصطفى</div>
-                                    </div>
-                                </div>
-                                <div class="row align-items-center mt-3">
-                                    <div class="col-6">
-                                        <h6 class="mb-0">4 Sep 2019</h6> <span class="text-sm text-muted">تاريخ الإجازة</span> </div>
-                                    <div class="col-6 text-right"> <span class="badge bg-inverse-success">موافق</span> </div>
-                                </div>
-                            </div>
-                            <div class="load-more text-center"> <a class="text-dark" href="javascript:void(0);">عرض المزيد</a> </div>
-                        </div>
+                    <div class="leave-stat">
+                        <div class="ls-row"><span>❌ مرفوضة</span><strong>{{ $leaveRejected }}</strong></div>
+                        <div class="hr-progress"><div class="bar" style="width:{{ round($leaveRejected/$leaveTotal*100) }}%; background:var(--danger);"></div></div>
                     </div>
-                </div>
-            </div>
-            <!-- /Statistics Widget -->
-            <div class="row">
-                <div class="col-md-6 d-flex">
-                    <div class="card card-table flex-fill">
-                        <div class="card-header">
-                            <h3 class="card-title mb-0">Invoices</h3> </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-nowrap custom-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>رقم الفاتورة</th>
-                                            <th>العميل</th>
-                                            <th>تاريخ الاستحقاق</th>
-                                            <th>المجموع</th>
-                                            <th>الحالة</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0001</a></td>
-                                            <td>
-                                                <h2><a href="#">التقنيات العالمية</a></h2>
-                                            </td>
-                                            <td>11 Mar 2019</td>
-                                            <td>$380</td>
-                                            <td> <span class="badge bg-inverse-warning">جزئياً مدفوع</span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0002</a></td>
-                                            <td>
-                                                <h2><a href="#">Delta Infotech</a></h2> </td>
-                                            <td>8 Feb 2019</td>
-                                            <td>$500</td>
-                                            <td>
-                                                <span class="badge bg-inverse-success">مدفوع</span>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0003</a></td>
-                                            <td>
-                                                <h2><a href="#">Cream Inc</a></h2> </td>
-                                            <td>23 Jan 2019</td>
-                                            <td>$60</td>
-                                            <td>
-                                                <span class="badge bg-inverse-danger">تحديث</span>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <a href="invoices.html">عرض جميع الفواتير</a>
-                        </div>
+
+                    <hr class="sec-divider">
+
+                    <h6 style="font-size:.8rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:12px;">الرواتب</h6>
+                    <div class="leave-stat">
+                        <div class="ls-row"><span>هذا الشهر</span><strong>{{ number_format($salaryThisMonth) }} ر.س</strong></div>
+                        <div class="hr-progress"><div class="bar" style="width:{{ round($salaryThisMonth/$maxSalary*100) }}%; background:var(--primary);"></div></div>
                     </div>
-                </div>
-                <div class="col-md-6 d-flex">
-                    <div class="card card-table flex-fill">
-                        <div class="card-header">
-                            <h3 class="card-title mb-0">المدفوعات</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table custom-table table-nowrap mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>رقم الفاتورة</th>
-                                            <th>العميل</th>
-                                            <th>نوع الدفع</th>
-                                            <th>تاريخ الدفع</th>
-                                            <th>مبلغ الدفع</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0001</a></td>
-                                            <td>
-                                                <h2><a href="#">التقنيات العالمية</a></h2> </td>
-                                            <td>Paypal</td>
-                                            <td>11 Mar 2019</td>
-                                            <td>$380</td>
-                                        </tr>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0002</a></td>
-                                            <td>
-                                                <h2><a href="#">علي محمد</a></h2> </td>
-                                            <td>Paypal</td>
-                                            <td>8 Feb 2019</td>
-                                            <td>$500</td>
-                                        </tr>
-                                        <tr>
-                                            <td><a href="invoice-view.html">#INV-0003</a></td>
-                                            <td>
-                                                <h2><a href="#">Cream Inc</a></h2> </td>
-                                            <td>Paypal</td>
-                                            <td>23 Jan 2019</td>
-                                            <td>$60</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <a href="payments.html">عرض جميع المدفوعيات</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-md-6 d-flex">
-                    <div class="card card-table flex-fill">
-                        <div class="card-header">
-                            <h3 class="card-title mb-0">العملاء</h3>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table custom-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>الاسم</th>
-                                            <th>البريد الإلكتروني</th>
-                                            <th>الحالة</th>
-                                            <th class="text-right">الإجراء</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="#" class="avatar"><img alt="" src="assets/img/profiles/avatar-19.jpg"></a>
-                                                    <a href="client-profile.html">Barry Cuda <span>CEO</span></a>
-                                                </h2>
-                                            </td>
-                                            <td>barrycuda@example.com</td>
-                                            <td>
-                                                <div class="dropdown action-label">
-                                                    <a class="btn btn-white btn-sm btn-rounded dropdown-toggle" href="#" data-toggle="dropdown" aria-expanded="false"> <i class="fa fa-dot-circle-o text-success"></i> Active </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-success"></i> نشط
-                                                        </a>
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-danger"></i> غير نشط
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action"> <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a> 
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="#" class="avatar"><img alt="" src="assets/img/profiles/avatar-19.jpg"></a>
-                                                    <a href="client-profile.html">Tressa Wexler <span>Manager</span></a>
-                                                </h2>
-                                            </td>
-                                            <td>tressawexler@example.com</td>
-                                            <td>
-                                                <div class="dropdown action-label">
-                                                    <a class="btn btn-white btn-sm btn-rounded dropdown-toggle" href="#" data-toggle="dropdown" aria-expanded="false"> <i class="fa fa-dot-circle-o text-danger"></i> Inactive </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-success"></i> Active
-                                                        </a>
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-danger"></i> Inactive
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="client-profile.html" class="avatar">
-                                                        <img alt="" src="assets/img/profiles/avatar-07.jpg">
-                                                    </a>
-                                                    <a href="client-profile.html">Ruby Bartlett <span>CEO</span></a>
-                                                </h2>
-                                             </td>
-                                            <td>rubybartlett@example.com</td>
-                                            <td>
-                                                <div class="dropdown action-label">
-                                                    <a class="btn btn-white btn-sm btn-rounded dropdown-toggle" href="#" data-toggle="dropdown" aria-expanded="false"> <i class="fa fa-dot-circle-o text-danger"></i> Inactive </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-success"></i> Active
-                                                        </a>
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-danger"></i> Inactive
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="client-profile.html" class="avatar">
-                                                        <img alt="" src="assets/img/profiles/avatar-06.jpg">
-                                                    </a>
-                                                    <a href="client-profile.html"> Misty Tison <span>CEO</span></a>
-                                                </h2>
-                                            </td>
-                                            <td>mistytison@example.com</td>
-                                            <td>
-                                                <div class="dropdown action-label">
-                                                    <a class="btn btn-white btn-sm btn-rounded dropdown-toggle" href="#" data-toggle="dropdown" aria-expanded="false"> <i class="fa fa-dot-circle-o text-success"></i> Active </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-success"></i> Active
-                                                        </a> <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-danger"></i> Inactive
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2 class="table-avatar">
-                                                    <a href="client-profile.html" class="avatar">
-                                                        <img alt="" src="assets/img/profiles/avatar-14.jpg">
-                                                    </a>
-                                                    <a href="client-profile.html"> Daniel Deacon <span>CEO</span></a>
-                                                </h2>
-                                            </td>
-                                            <td>danieldeacon@example.com</td>
-                                            <td>
-                                                <div class="dropdown action-label">
-                                                    <a class="btn btn-white btn-sm btn-rounded dropdown-toggle" href="#" data-toggle="dropdown" aria-expanded="false"> <i class="fa fa-dot-circle-o text-danger"></i> Inactive </a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-success"></i> Active
-                                                        </a> 
-                                                        <a class="dropdown-item" href="#">
-                                                            <i class="fa fa-dot-circle-o text-danger"></i> Inactive
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer"> <a href="clients.html">View all clients</a> </div>
-                    </div>
-                </div>
-                <div class="col-md-6 d-flex">
-                    <div class="card card-table flex-fill">
-                        <div class="card-header">
-                            <h3 class="card-title mb-0">Recent Projects</h3> </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table custom-table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>Project Name </th>
-                                            <th>Progress</th>
-                                            <th class="text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <h2>
-                                                    <a href="project-view.html">Office Management</a>
-                                                </h2>
-                                                <small class="block text-ellipsis">   
-                                                    <span>1</span> <span class="text-muted">open tasks, </span>
-                                                    <span>9</span> <span class="text-muted">tasks completed</span>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div class="progress progress-xs progress-striped">
-                                                    <div class="progress-bar" role="progressbar" data-toggle="tooltip" title="65%" style="width: 65%"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2>
-                                                    <a href="project-view.html">Project Management</a>
-                                                </h2> 
-                                                <small class="block text-ellipsis">
-                                                    <span>2</span> <span class="text-muted">open tasks, </span>
-                                                    <span>5</span> <span class="text-muted">tasks completed</span>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div class="progress progress-xs progress-striped">
-                                                    <div class="progress-bar" role="progressbar" data-toggle="tooltip" title="15%" style="width: 15%"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2>
-                                                    <a href="project-view.html">Video Calling App</a>
-                                                </h2>
-                                                <small class="block text-ellipsis">
-                                                    <span>3</span> <span class="text-muted">open tasks, </span>
-                                                    <span>3</span> <span class="text-muted">tasks completed</span>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div class="progress progress-xs progress-striped">
-                                                    <div class="progress-bar" role="progressbar" data-toggle="tooltip" title="49%" style="width: 49%"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2>
-                                                    <a href="project-view.html">Hospital Administration</a>
-                                                </h2>
-                                                <small class="block text-ellipsis">
-                                                    <span>12</span> <span class="text-muted">open tasks, </span>
-                                                    <span>4</span> <span class="text-muted">tasks completed</span>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div class="progress progress-xs progress-striped">
-                                                    <div class="progress-bar" role="progressbar" data-toggle="tooltip" title="88%" style="width: 88%"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td>
-                                                <h2>
-                                                    <a href="project-view.html">Digital Marketplace</a>
-                                                </h2>
-                                                <small class="block text-ellipsis">
-                                                    <span>7</span> <span class="text-muted">open tasks, </span>
-                                                    <span>14</span> <span class="text-muted">tasks completed</span>
-                                                </small>
-                                            
-                                            </td>
-                                            <td>
-                                                <div class="progress progress-xs progress-striped">
-                                                    <div class="progress-bar" role="progressbar" data-toggle="tooltip" title="100%" style="width: 100%"></div>
-                                                </div>
-                                            </td>
-                                            <td class="text-right">
-                                                <div class="dropdown dropdown-action">
-                                                    <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
-                                                    <div class="dropdown-menu dropdown-menu-right">
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-pencil m-r-5"></i> Edit
-                                                        </a>
-                                                        <a class="dropdown-item" href="javascript:void(0)">
-                                                            <i class="fa fa-trash-o m-r-5"></i> Delete
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                        <div class="card-footer">
-                            <a href="projects.html">View all projects</a>
-                        </div>
+                    <div class="leave-stat">
+                        <div class="ls-row"><span>الشهر الماضي</span><strong>{{ number_format($salaryLastMonth) }} ر.س</strong></div>
+                        <div class="hr-progress"><div class="bar" style="width:{{ round($salaryLastMonth/$maxSalary*100) }}%; background:var(--info);"></div></div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- /Page Content -->
     </div>
-@endsection 
+
+    {{-- ══ Departments + Attendance ══ --}}
+    <div class="row g-3 mb-3">
+
+        <div class="col-md-5 anim anim-1">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5><i class="la la-building" style="color:var(--purple);"></i> الأقسام</h5>
+                    <a href="{{ route('form/departments/page') }}" class="btn-outline-primary">الكل</a>
+                </div>
+                <div class="hr-card-body">
+                    @php
+                    $dColors = ['var(--primary)','var(--success)','var(--warning)','var(--danger)','var(--info)','var(--purple)'];
+                    $maxEmp  = $departments->max('emp_count') ?: 1;
+                    @endphp
+                    @forelse($departments as $dept)
+                    @php $pct = round($dept->emp_count / $maxEmp * 100); @endphp
+                    <div class="dept-row">
+                        <div class="dept-name">{{ $dept->dept_name ?? '-' }}</div>
+                        <div class="dept-bar-wrap">
+                            <div class="dept-bar-track">
+                                <div class="dept-bar-fill" style="width:{{ $pct }}%; background:{{ $dColors[$loop->index % 6] }};"></div>
+                            </div>
+                        </div>
+                        <div class="dept-count">{{ $dept->emp_count }}</div>
+                    </div>
+                    @empty
+                    <div class="empty-state"><i class="fa fa-inbox"></i><p>لا توجد أقسام</p></div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7 anim anim-2">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5>
+                        <i class="fa fa-user-check" style="color:var(--success);"></i>
+                        حضور اليوم
+                        <span class="badge-soft success">{{ $presentToday }}</span>
+                    </h5>
+                    <a href="{{ route('attendance/employee/page') }}" class="btn-outline-primary">الكل</a>
+                </div>
+                <div class="hr-card-body p-0">
+                    <div class="table-responsive">
+                        <table class="hr-table">
+                            <thead>
+                                <tr>
+                                    <th>الموظف</th>
+                                    <th>دخول</th>
+                                    <th>خروج</th>
+                                    <th class="text-center">المدة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($recentAttendance as $att)
+                                @php
+                                    $in  = $att->check_in  ? Carbon::parse($att->check_in)  : null;
+                                    $out = $att->check_out ? Carbon::parse($att->check_out) : null;
+                                    $hrs = ($in && $out && $out->ne($in)) ? round($in->diffInMinutes($out)/60,1) : null;
+                                    $avatarColors = [
+                                        'linear-gradient(135deg,#6366f1,#a78bfa)',
+                                        'linear-gradient(135deg,#10b981,#34d399)',
+                                        'linear-gradient(135deg,#f59e0b,#fbbf24)',
+                                        'linear-gradient(135deg,#ef4444,#f87171)',
+                                        'linear-gradient(135deg,#06b6d4,#67e8f9)',
+                                        'linear-gradient(135deg,#8b5cf6,#c4b5fd)',
+                                    ];
+                                    $ac = $avatarColors[$loop->index % 6];
+                                @endphp
+                                <tr>
+                                    <td>
+                                        <div style="display:flex;align-items:center;gap:9px;">
+                                            <div class="emp-avatar" style="background:{{ $ac }};">
+                                                {{ mb_substr($att->employee_name ?? '?', 0, 1) }}
+                                            </div>
+                                            <span style="font-weight:600;">{{ $att->employee_name ?? '-' }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        @if($in)
+                                            <span class="badge-soft success">{{ $in->format('h:i A') }}</span>
+                                        @else <span style="color:var(--text-muted);">—</span> @endif
+                                    </td>
+                                    <td>
+                                        @if($out && $out->ne($in))
+                                            <span class="badge-soft danger">{{ $out->format('h:i A') }}</span>
+                                        @else
+                                            <span class="badge-soft warning">داخل</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if($hrs)
+                                            <span class="badge-soft primary">{{ $hrs }} س</span>
+                                        @else <span style="color:var(--text-muted);">—</span> @endif
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="4">
+                                        <div class="empty-state">
+                                            <i class="fa fa-calendar-times-o"></i>
+                                            <p>لا يوجد حضور مسجل اليوم</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ══ Absent + New Employees ══ --}}
+    <div class="row g-3">
+
+        <div class="col-md-6 anim anim-1">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5>
+                        <i class="fa fa-user-times" style="color:var(--danger);"></i>
+                        غائبون اليوم
+                        @if($absentToday > 0)
+                            <span class="badge-soft danger">{{ $absentToday }}</span>
+                        @endif
+                    </h5>
+                </div>
+                <div class="hr-card-body">
+                    @forelse($absentEmployees as $emp)
+                    <div class="emp-item">
+                        <div class="emp-avatar" style="background:linear-gradient(135deg,#ef4444,#f97316);">
+                            {{ mb_substr($emp->name ?? '?', 0, 1) }}
+                        </div>
+                        <div class="emp-info">
+                            <div class="name">{{ $emp->name }}</div>
+                            <div class="sub">{{ $emp->employee_id ?? 'بدون رقم' }}</div>
+                        </div>
+                        <span class="badge-soft danger">غائب</span>
+                    </div>
+                    @empty
+                    <div class="empty-state" style="color:var(--success);">
+                        <i class="fa fa-check-circle" style="opacity:1; color:var(--success);"></i>
+                        <p>جميع الموظفين حاضرون اليوم 🎉</p>
+                    </div>
+                    @endforelse
+
+                    @if($absentToday > 5)
+                    <p class="text-center mt-3 mb-0" style="font-size:.8rem; color:var(--text-muted);">
+                        + {{ $absentToday - 5 }} موظف غائب آخر
+                    </p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 anim anim-2">
+            <div class="hr-card">
+                <div class="hr-card-head">
+                    <h5>
+                        <i class="fa fa-user-plus" style="color:var(--info);"></i>
+                        موظفون جدد
+                        @if($newEmployeesCount > 0)
+                            <span class="badge-soft info">{{ $newEmployeesCount }}</span>
+                        @endif
+                    </h5>
+                    <a href="{{ route('all/employee/card') }}" class="btn-outline-primary">الكل</a>
+                </div>
+                <div class="hr-card-body">
+                    @forelse($newEmployees as $emp)
+                    <div class="emp-item">
+                        <div class="emp-avatar" style="background:linear-gradient(135deg,#6366f1,#a78bfa);">
+                            {{ mb_substr($emp->name ?? '?', 0, 1) }}
+                        </div>
+                        <div class="emp-info">
+                            <div class="name">{{ $emp->name }}</div>
+                            <div class="sub">انضم {{ Carbon::parse($emp->created_at)->locale('ar')->diffForHumans() }}</div>
+                        </div>
+                        <span class="badge-soft success">جديد</span>
+                    </div>
+                    @empty
+                    <div class="empty-state">
+                        <i class="fa fa-inbox"></i>
+                        <p>لا يوجد موظفون جدد في آخر ٣٠ يوم</p>
+                    </div>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+@endsection
+
+@section('script')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var ctx = document.getElementById('attendanceChart');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: @json($chartDays),
+            datasets: [
+                {
+                    label: 'حاضرون',
+                    data: @json($chartPresent),
+                    backgroundColor: 'rgba(79,70,229,0.80)',
+                    borderColor: 'rgba(79,70,229,1)',
+                    borderWidth: 0,
+                    borderRadius: 7,
+                    borderSkipped: false,
+                },
+                {
+                    label: 'غائبون',
+                    data: @json($chartAbsent),
+                    backgroundColor: 'rgba(239,68,68,0.28)',
+                    borderColor: 'rgba(239,68,68,.7)',
+                    borderWidth: 0,
+                    borderRadius: 7,
+                    borderSkipped: false,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 16, font: { size: 12 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: c => c.dataset.label + ': ' + c.parsed.y + ' موظف'
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                y: {
+                    beginAtZero: true,
+                    max: {{ max(1, $totalEmployees) }},
+                    ticks: { stepSize: Math.max(1, Math.ceil({{ $totalEmployees }} / 5)), font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,.05)' }
+                }
+            }
+        }
+    });
+});
+</script>
+@endsection

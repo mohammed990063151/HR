@@ -1,150 +1,406 @@
-<!-- Sidebar -->
-{{-- @php
-  $dashOpen = set_active(['home','em/dashboard']);
-  $usersOpen = set_active(['search/user/list','userManagement','activity/log','activity/login/logout']);
-  $empOpen = set_active([
-      'all/employee/list','all/employee/card','form/holidays/new','form/leaves/new','form/leaves/employee/new',
-      'form/leavesettings/page','attendance/page','attendance/employee/page','form/departments/page',
-      'form/designations/page','form/timesheet/page','form/shiftscheduling/page','form/overtime/page'
-  ]);
-  $salesOpen = set_active(['create/estimate/page','form/estimates/page','payments','expenses/page']);
-  $payrollOpen = set_active(['form/salary/page','form/payroll/items']);
-  $reportsOpen = set_active(['form/expense/reports/page','form/invoice/reports/page','form/attendance/reports/page']);
-@endphp
+{{-- ===================================================
+     SIDEBAR - خط عربي جذاب + فتح/إغلاق سلس
+     =================================================== --}}
 
+{{-- Google Fonts - Cairo للعناوين + Tajawal للنصوص --}}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ── متغيرات الألوان ─────────────────────────── */
+:root {
+    --sidebar-bg:        #0f172a;
+    --sidebar-width:     260px;
+    --sidebar-collapsed: 68px;
+    --accent:            #6366f1;
+    --accent-light:      #818cf8;
+    --accent-glow:       rgba(99,102,241,0.18);
+    --text-primary:      #f1f5f9;
+    --text-muted:        #94a3b8;
+    --item-hover:        rgba(99,102,241,0.12);
+    --item-active:       rgba(99,102,241,0.22);
+    --border:            rgba(148,163,184,0.08);
+    --title-color:       #475569;
+    --transition:        0.3s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ── الخطوط ──────────────────────────────────── */
+#sidebar,
+#sidebar * {
+    font-family: 'Tajawal', 'Cairo', sans-serif !important;
+}
+
+#sidebar .menu-title span,
+#sidebar .sidebar-menu > ul > li > a > span:first-of-type {
+    font-family: 'Cairo', sans-serif !important;
+}
+
+/* ── الهيكل الأساسي ──────────────────────────── */
+#sidebar {
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    position: fixed;
+    top: 0; right: 0;
+    height: 100vh;
+    z-index: 1000;
+    transition: width var(--transition);
+    overflow: hidden;
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 30px rgba(0,0,0,0.4);
+    direction: rtl;
+}
+
+/* ── حالة الإغلاق ────────────────────────────── */
+#sidebar.sidebar-collapsed {
+    width: var(--sidebar-collapsed);
+}
+
+#sidebar.sidebar-collapsed .menu-title,
+#sidebar.sidebar-collapsed .menu-arrow,
+#sidebar.sidebar-collapsed a > span:not(.badge),
+#sidebar.sidebar-collapsed .noti-dot::after {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    transition: opacity var(--transition), width var(--transition);
+}
+
+#sidebar.sidebar-collapsed .sidebar-inner {
+    overflow: visible;
+}
+
+/* ── النصوص في الوضع المفتوح ──────────────────── */
+#sidebar a > span,
+#sidebar .menu-title {
+    opacity: 1;
+    transition: opacity var(--transition);
+    white-space: nowrap;
+}
+
+/* ── زر التبديل ──────────────────────────────── */
+#sidebar-toggle-btn {
+    position: fixed;
+    top: 18px;
+    right: calc(var(--sidebar-width) - 14px);
+    z-index: 1100;
+    width: 28px;
+    height: 28px;
+    background: var(--accent);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(99,102,241,0.5);
+    transition: right var(--transition), transform var(--transition), background var(--transition);
+    padding: 0;
+}
+
+#sidebar-toggle-btn:hover {
+    background: var(--accent-light);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.7);
+}
+
+body.sidebar-collapsed-body #sidebar-toggle-btn {
+    right: calc(var(--sidebar-collapsed) - 14px);
+    transform: rotate(180deg);
+}
+
+#sidebar-toggle-btn svg {
+    width: 14px; height: 14px;
+    fill: #fff;
+    transition: transform var(--transition);
+}
+
+/* ── الشريط الداخلي ──────────────────────────── */
+.sidebar-inner {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 24px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent) transparent;
+}
+
+.sidebar-inner::-webkit-scrollbar { width: 3px; }
+.sidebar-inner::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+/* ── شعار / رأس السيدبار ─────────────────────── */
+.sidebar-logo {
+    padding: 22px 18px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    min-height: 68px;
+}
+
+.sidebar-logo .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+    box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.sidebar-logo .logo-text {
+    font-family: 'Cairo', sans-serif !important;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    transition: opacity var(--transition);
+    white-space: nowrap;
+}
+
+#sidebar.sidebar-collapsed .logo-text { opacity: 0; width: 0; overflow: hidden; }
+
+/* ── عناوين الأقسام ──────────────────────────── */
+.sidebar-menu .menu-title {
+    padding: 18px 18px 6px;
+    overflow: hidden;
+    transition: all var(--transition);
+    height: 40px;
+}
+
+.sidebar-menu .menu-title span {
+    font-family: 'Cairo', sans-serif !important;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--title-color);
+    display: block;
+    transition: opacity var(--transition);
+}
+
+#sidebar.sidebar-collapsed .menu-title {
+    height: 10px;
+    padding: 5px 0;
+}
+
+/* ── روابط القائمة ───────────────────────────── */
+.sidebar-menu ul { list-style: none; margin: 0; padding: 0 8px; }
+
+.sidebar-menu > ul { padding: 0 8px 0; }
+
+.sidebar-menu li > a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    position: relative;
+    white-space: nowrap;
+    cursor: pointer;
+    margin-bottom: 2px;
+}
+
+.sidebar-menu li > a:hover {
+    background: var(--item-hover);
+    color: var(--text-primary);
+    transform: translateX(-2px);
+}
+
+.sidebar-menu li > a.active,
+.sidebar-menu li.active > a {
+    background: var(--item-active);
+    color: #fff;
+}
+
+.sidebar-menu li > a.active::before,
+.sidebar-menu li.active > a::before {
+    content: '';
+    position: absolute;
+    right: 0; top: 50%;
+    transform: translateY(-50%);
+    width: 3px; height: 60%;
+    background: var(--accent);
+    border-radius: 2px 0 0 2px;
+}
+
+/* ── الأيقونات ───────────────────────────────── */
+.sidebar-menu li > a > i,
+.sidebar-menu li > a > .menu-icon {
+    font-size: 18px;
+    width: 22px;
+    text-align: center;
+    flex-shrink: 0;
+    transition: color 0.2s;
+}
+
+.sidebar-menu li > a:hover > i { color: var(--accent-light); }
+.sidebar-menu li.active > a > i,
+.sidebar-menu li > a.active > i { color: var(--accent-light); }
+
+/* ── سهم القائمة الفرعية ─────────────────────── */
+.menu-arrow {
+    margin-right: auto !important;
+    margin-left: 0 !important;
+    font-size: 11px;
+    opacity: 0.5;
+    transition: transform 0.25s ease, opacity var(--transition);
+    flex-shrink: 0;
+}
+
+.menu-arrow::before {
+    content: '\f107';
+    font-family: 'FontAwesome';
+}
+
+.submenu.open > a .menu-arrow,
+.submenu > a[aria-expanded="true"] .menu-arrow {
+    transform: rotate(180deg);
+    opacity: 1;
+}
+
+/* ── القائمة الفرعية ─────────────────────────── */
+.sidebar-menu .submenu > ul {
+    padding: 2px 0 4px 0;
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+
+.sidebar-menu .submenu.open > ul {
+    max-height: 600px;
+}
+
+.sidebar-menu .submenu > ul li a {
+    padding: 8px 12px 8px 12px;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-muted);
+    border-radius: 8px;
+    margin-right: 28px;
+    position: relative;
+}
+
+.sidebar-menu .submenu > ul li a::before {
+    content: '';
+    position: absolute;
+    right: -14px; top: 50%;
+    transform: translateY(-50%);
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s;
+}
+
+.sidebar-menu .submenu > ul li a:hover::before,
+.sidebar-menu .submenu > ul li a.active::before {
+    background: var(--accent);
+}
+
+.sidebar-menu .submenu > ul li a:hover {
+    color: var(--text-primary);
+    background: var(--item-hover);
+    transform: translateX(-2px);
+}
+
+.sidebar-menu .submenu > ul li a.active {
+    color: #fff;
+    background: transparent;
+}
+
+/* ── Badge ───────────────────────────────────── */
+.badge {
+    font-family: 'Cairo', sans-serif !important;
+    font-size: 10px !important;
+    padding: 2px 6px !important;
+    border-radius: 20px !important;
+    margin-right: auto;
+    flex-shrink: 0;
+}
+
+/* ── noti-dot ────────────────────────────────── */
+.noti-dot { position: relative; }
+.noti-dot::after {
+    content: '';
+    position: absolute;
+    top: 10px; left: 10px;
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(99,102,241,0.3);
+    transition: opacity var(--transition);
+}
+
+/* ── Overlay ─────────────────────────────────── */
+#sidebarOverlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 999;
+    backdrop-filter: blur(2px);
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        width: var(--sidebar-width) !important;
+        right: calc(-1 * var(--sidebar-width));
+        transition: right var(--transition);
+    }
+    #sidebar.mobile-open {
+        right: 0;
+    }
+    #sidebar.mobile-open ~ #sidebarOverlay,
+    body.mobile-sidebar-open #sidebarOverlay {
+        display: block;
+    }
+    #sidebar-toggle-btn {
+        right: 12px;
+        top: 16px;
+    }
+    body.mobile-sidebar-open #sidebar-toggle-btn {
+        right: calc(var(--sidebar-width) - 14px);
+    }
+}
+
+/* ── تعديل المحتوى الرئيسي ───────────────────── */
+.page-wrapper {
+    margin-right: var(--sidebar-width);
+    transition: margin-right var(--transition);
+}
+body.sidebar-collapsed-body .page-wrapper {
+    margin-right: var(--sidebar-collapsed);
+}
+@media (max-width: 768px) {
+    .page-wrapper { margin-right: 0 !important; }
+}
+</style>
+
+{{-- ── زر التبديل خارج الـ Sidebar ────────────── --}}
+<button id="sidebar-toggle-btn" title="فتح/إغلاق القائمة" aria-label="toggle sidebar">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M15 18l-6-6 6-6"/>
+    </svg>
+</button>
+
+{{-- ── السيدبار الرئيسي ─────────────────────── --}}
 <div class="sidebar" id="sidebar">
     <div class="sidebar-inner slimscroll">
-        <div id="sidebar-menu" class="sidebar-menu">
-            <ul>
 
-                <li class="menu-title"><span>الرئيسية</span></li>
-
-                {{-- Dashboard --}
-                <li class="{{ $dashOpen }} submenu">
-                    <a href="#dashMenu" data-toggle="collapse" aria-expanded="{{ $dashOpen ? 'true' : 'false' }}"
-                       class="{{ $dashOpen ? '' : 'collapsed' }} {{ $dashOpen ? 'noti-dot' : '' }}">
-                        <i class="la la-dashboard"></i>
-                        <span>لوحة التحكم</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-
-                    <ul id="dashMenu" class="collapse {{ $dashOpen ? 'show' : '' }}">
-                        <li><a class="{{ set_active(['home']) }}" href="{{ route('home') }}">لوحة تحكم المدير</a></li>
-                        <li><a class="{{ set_active(['em/dashboard']) }}" href="{{ route('em/dashboard') }}">لوحة تحكم الموظف</a></li>
-                    </ul>
-                </li>
-
-                @if (Auth::user()->role_name=='Admin')
-                    <li class="menu-title"><span>إدارة المستخدمين</span></li>
-
-                    <li class="{{ $usersOpen }} submenu">
-                        <a href="#usersMenu" data-toggle="collapse" aria-expanded="{{ $usersOpen ? 'true' : 'false' }}"
-                           class="{{ $usersOpen ? '' : 'collapsed' }} {{ $usersOpen ? 'noti-dot' : '' }}">
-                            <i class="la la-user-secret"></i>
-                            <span>إدارة المستخدمين</span>
-                            <span class="menu-arrow"></span>
-                        </a>
-
-                        <ul id="usersMenu" class="collapse {{ $usersOpen ? 'show' : '' }}">
-                            <li><a class="{{ set_active(['search/user/list','userManagement']) }}" href="{{ route('userManagement') }}">جميع المستخدمين</a></li>
-                        </ul>
-                    </li>
-                @endif
-
-                <li class="menu-title"><span>الموظفون</span></li>
-
-                <li class="{{ $empOpen }} submenu">
-                    <a href="#empMenu" data-toggle="collapse" aria-expanded="{{ $empOpen ? 'true' : 'false' }}"
-                       class="{{ $empOpen ? '' : 'collapsed' }} {{ $empOpen ? 'noti-dot' : '' }}">
-                        <i class="la la-user"></i>
-                        <span>الموظفون</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-
-                    <ul id="empMenu" class="collapse {{ $empOpen ? 'show' : '' }}">
-                        <li><a class="{{ set_active(['all/employee/card']) }}" href="{{ route('all/employee/card') }}">جميع الموظفين</a></li>
-                        <li><a class="{{ set_active(['form/holidays/new']) }}" href="{{ route('form/holidays/new') }}">الإجازات الرسمية</a></li>
-                        <li><a class="{{ set_active(['form/leaves/new']) }}" href="{{ route('form/leaves/new') }}">طلبات الإجازة (الإدارة)</a></li>
-                        <li><a class="{{ set_active(['form/leaves/employee/new']) }}" href="{{ route('form/leaves/employee/new') }}">طلبات الإجازة (الموظف)</a></li>
-                        <li><a class="{{ set_active(['form/leavesettings/page']) }}" href="{{ route('form/leavesettings/page') }}">إعدادات الإجازات</a></li>
-                        <li><a class="{{ set_active(['attendance/page']) }}" href="{{ route('attendance/page') }}">الحضور والانصراف (الإدارة)</a></li>
-                        <li><a class="{{ set_active(['attendance/employee/page']) }}" href="{{ route('attendance/employee/page') }}">الحضور والانصراف (الموظف)</a></li>
-                        <li><a class="{{ set_active(['form/departments/page']) }}" href="{{ route('form/departments/page') }}">الأقسام</a></li>
-                        <li><a class="{{ set_active(['form/designations/page']) }}" href="{{ route('form/designations/page') }}">المسميات الوظيفية</a></li>
-                        <li><a class="{{ set_active(['form/timesheet/page']) }}" href="{{ route('form/timesheet/page') }}">سجل الدوام</a></li>
-                        <li><a class="{{ set_active(['form/shiftscheduling/page']) }}" href="{{ route('form/shiftscheduling/page') }}">الجداول والمناوبات</a></li>
-                        <li><a class="{{ set_active(['form/overtime/page']) }}" href="{{ route('form/overtime/page') }}">العمل الإضافي</a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"><span>الموارد البشرية</span></li>
-
-                <li class="{{ $salesOpen }} submenu">
-                         <a href="#empMenu" data-toggle="collapse" aria-expanded="{{ $salesOpen ? 'true' : 'false' }}"
-                       class="{{ $salesOpen ? '' : 'collapsed' }} {{ $salesOpen ? 'noti-dot' : '' }}">
-                        <i class="la la-files-o"></i>
-                        <span>المبيعات</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-
-                    <ul id="salesMenu" class="collapse {{ $salesOpen ? 'show' : '' }}">
-                        <li><a class="{{ set_active(['form/estimates/page']) }}" href="{{ route('form/estimates/page') }}">التقديرات</a></li>
-                        <li><a class="{{ set_active(['payments']) }}" href="{{ route('payments') }}">المدفوعات</a></li>
-                        <li><a class="{{ set_active(['expenses/page']) }}" href="{{ route('expenses/page') }}">المصروفات</a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"><span>الرواتب</span></li>
-
-                <li class="{{ $payrollOpen }} submenu">
-                    {{-- <a href="#payrollMenu" data-toggle="collapse" aria-expanded="{{ $payrollOpen ? 'true' : 'false' }}"
-                       class="{{ $payrollOpen ? '' : 'collapsed' }} {{ $payrollOpen ? 'noti-dot' : '' }}"> --}
-                         <a href="#empMenu" data-toggle="collapse" aria-expanded="{{ $payrollOpen ? 'true' : 'false' }}"
-                       class="{{ $payrollOpen ? '' : 'collapsed' }} {{ $payrollOpen ? 'noti-dot' : '' }}">
-                        <i class="la la-money"></i>
-                        <span>الرواتب</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-
-                    <ul id="payrollMenu" class="collapse {{ $payrollOpen ? 'show' : '' }}">
-                        <li><a class="{{ set_active(['form/salary/page']) }}" href="{{ route('form/salary/page') }}">رواتب الموظفين</a></li>
-                        <li><a href="#">قسائم الرواتب</a></li>
-                        <li><a class="{{ set_active(['form/payroll/items']) }}" href="{{ route('form/payroll/items') }}">بنود الرواتب</a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"><span>التقارير</span></li>
-
-                <li class="{{ $reportsOpen }} submenu">
-                    <a href="#reportsMenu" data-toggle="collapse" aria-expanded="{{ $reportsOpen ? 'true' : 'false' }}"
-                       class="{{ $reportsOpen ? '' : 'collapsed' }} {{ $reportsOpen ? 'noti-dot' : '' }}">
-                        <i class="la la-pie-chart"></i>
-                        <span>التقارير</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-
-                    <ul id="reportsMenu" class="collapse {{ $reportsOpen ? 'show' : '' }}">
-                        <li><a class="{{ set_active(['form/expense/reports/page']) }}" href="{{ route('form/expense/reports/page') }}">تقرير المصروفات</a></li>
-                        <li><a class="{{ set_active(['form/invoice/reports/page']) }}" href="{{ route('form/invoice/reports/page') }}">تقرير الفواتير</a></li>
-                        <li><a class="{{ set_active(['form/attendance/reports/page']) }}" href="{{ route('form/attendance/reports/page') }}">تقرير الحضور</a></li>
-                    </ul>
-                </li>
-
-            </ul>
+        {{-- شعار --}}
+        <div class="sidebar-logo">
+            <div class="logo-icon">🏢</div>
+            <span class="logo-text">نظام الموارد البشرية</span>
         </div>
-    </div>
-</div> --}}
-<!-- /Sidebar -->
 
-
-
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-inner slimscroll">
         <div id="sidebar-menu" class="sidebar-menu">
             <ul>
-                <li class="menu-title">
-                    <span>الرئيسية</span>
-                </li>
+
+                {{-- ── الرئيسية ────────────────────────── --}}
+                <li class="menu-title"><span>الرئيسية</span></li>
 
                 <li class="{{set_active(['home','em/dashboard'])}} submenu">
                     <a href="#" class="{{ set_active(['home','em/dashboard']) ? 'noti-dot' : '' }}">
@@ -152,16 +408,15 @@
                         <span>لوحة التحكم</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
+                    <ul>
                         <li><a class="{{set_active(['home'])}}" href="{{ route('home') }}">لوحة تحكم المدير</a></li>
                         <li><a class="{{set_active(['em/dashboard'])}}" href="{{ route('em/dashboard') }}">لوحة تحكم الموظف</a></li>
                     </ul>
                 </li>
 
-                @if (Auth::user()->role_name=='Admin')
-                    <li class="menu-title">
-                        <span>الصلاحيات</span>
-                    </li>
+                {{-- ── الصلاحيات ───────────────────────── --}}
+                @if (Auth::user()->role_name == 'Admin')
+                    <li class="menu-title"><span>الصلاحيات</span></li>
 
                     <li class="{{set_active(['search/user/list','userManagement','activity/log','activity/login/logout'])}} submenu">
                         <a href="#" class="{{ set_active(['search/user/list','userManagement','activity/log','activity/login/logout']) ? 'noti-dot' : '' }}">
@@ -169,18 +424,17 @@
                             <span>إدارة المستخدمين</span>
                             <span class="menu-arrow"></span>
                         </a>
-                        <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
+                        <ul>
                             <li><a class="{{set_active(['search/user/list','userManagement'])}}" href="{{ route('userManagement') }}">جميع المستخدمين</a></li>
                         </ul>
                     </li>
                 @endif
 
-                <li class="menu-title">
-                    <span>الموظفون</span>
-                </li>
+                {{-- ── الموظفون ─────────────────────────── --}}
+                <li class="menu-title"><span>الموظفون</span></li>
 
                 <li class="{{set_active([
-                    'all/employee/list','all/employee/list','all/employee/card','form/holidays/new','form/leaves/new',
+                    'all/employee/list','all/employee/card','form/holidays/new','form/leaves/new',
                     'form/leaves/employee/new','form/leavesettings/page','attendance/page',
                     'attendance/employee/page','form/departments/page','form/designations/page',
                     'form/timesheet/page','form/shiftscheduling/page','form/overtime/page'
@@ -195,28 +449,18 @@
                         <span>الموظفون</span>
                         <span class="menu-arrow"></span>
                     </a>
-
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li>
-                            <a class="{{set_active(['all/employee/list','all/employee/card'])}} {{ request()->is('all/employee/view/edit/*','employee/profile/*') ? 'active' : '' }}"
-                               href="{{ route('all/employee/card') }}">
-                                جميع الموظفين
-                            </a>
-                        </li>
-
+                    <ul>
+                        <li><a class="{{set_active(['all/employee/list','all/employee/card'])}} {{ request()->is('all/employee/view/edit/*','employee/profile/*') ? 'active' : '' }}"
+                               href="{{ route('all/employee/card') }}">جميع الموظفين</a></li>
                         <li><a class="{{set_active(['form/holidays/new'])}}" href="{{ route('form/holidays/new') }}">الإجازات</a></li>
-
-                        <li>
-                            <a class="{{set_active(['form/leaves/new'])}}" href="{{ route('form/leaves/new') }}">
-                                طلبات الإجازة (الإدارة)
-                                <span class="badge badge-pill bg-primary float-right">1</span>
-                            </a>
-                        </li>
-
+                        <li><a class="{{set_active(['form/leaves/new'])}}" href="{{ route('form/leaves/new') }}">
+                            طلبات الإجازة (الإدارة)
+                            <span class="badge bg-primary">1</span>
+                        </a></li>
                         <li><a class="{{set_active(['form/leaves/employee/new'])}}" href="{{route('form/leaves/employee/new')}}">طلبات الإجازة (الموظف)</a></li>
                         <li><a class="{{set_active(['form/leavesettings/page'])}}" href="{{ route('form/leavesettings/page') }}">إعدادات الإجازات</a></li>
-                        <li><a class="{{set_active(['attendance/page'])}}" href="{{ route('attendance/page') }}">الحضور والانصراف (الإدارة)</a></li>
-                        <li><a class="{{set_active(['attendance/employee/page'])}}" href="{{ route('attendance/employee/page') }}">الحضور والانصراف (الموظف)</a></li>
+                        <li><a class="{{set_active(['attendance/page'])}}" href="{{ route('attendance/page') }}">الحضور (الإدارة)</a></li>
+                        <li><a class="{{set_active(['attendance/employee/page'])}}" href="{{ route('attendance/employee/page') }}">الحضور (الموظف)</a></li>
                         <li><a class="{{set_active(['form/departments/page'])}}" href="{{ route('form/departments/page') }}">الأقسام</a></li>
                         <li><a class="{{set_active(['form/designations/page'])}}" href="{{ route('form/designations/page') }}">المسميات الوظيفية</a></li>
                         <li><a class="{{set_active(['form/timesheet/page'])}}" href="{{ route('form/timesheet/page') }}">سجل الدوام</a></li>
@@ -225,9 +469,8 @@
                     </ul>
                 </li>
 
-                <li class="menu-title">
-                    <span>الموارد البشرية</span>
-                </li>
+                {{-- ── الموارد البشرية ──────────────────── --}}
+                <li class="menu-title"><span>الموارد البشرية</span></li>
 
                 <li class="{{set_active(['create/estimate/page','form/estimates/page','payments','expenses/page'])}} submenu">
                     <a href="#" class="{{ set_active(['create/estimate/page','form/estimates/page','payments','expenses/page']) ? 'noti-dot' : '' }}">
@@ -235,17 +478,16 @@
                         <span>المبيعات</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li>
-                            <a class="{{set_active(['create/estimate/page','form/estimates/page'])}} {{ request()->is('edit/estimate/*') ? 'active' : '' }}{{ request()->is('estimate/view/*') ? 'active' : '' }}"
-                               href="{{ route('form/estimates/page') }}">
-                                التقديرات
-                            </a>
-                        </li>
+                    <ul>
+                        <li><a class="{{set_active(['create/estimate/page','form/estimates/page'])}} {{ request()->is('edit/estimate/*','estimate/view/*') ? 'active' : '' }}"
+                               href="{{ route('form/estimates/page') }}">التقديرات</a></li>
                         <li><a class="{{set_active(['payments'])}}" href="{{ route('payments') }}">المدفوعات</a></li>
                         <li><a class="{{set_active(['expenses/page'])}}" href="{{ route('expenses/page') }}">المصروفات</a></li>
                     </ul>
                 </li>
+
+                {{-- ── الرواتب ──────────────────────────── --}}
+                <li class="menu-title"><span>الرواتب</span></li>
 
                 <li class="{{set_active(['form/salary/page','form/payroll/items'])}} submenu">
                     <a href="#" class="{{ set_active(['form/salary/page','form/payroll/items']) ? 'noti-dot' : '' }}">
@@ -253,34 +495,36 @@
                         <span>الرواتب</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
+                    <ul>
                         <li><a class="{{set_active(['form/salary/page'])}}" href="{{ route('form/salary/page') }}">رواتب الموظفين</a></li>
                         <li><a href="{{ route('form/salary/page') }}">قسيمة الراتب</a></li>
                         <li><a class="{{set_active(['form/payroll/items'])}}" href="{{ route('form/payroll/items') }}">بنود الرواتب</a></li>
                     </ul>
                 </li>
 
-                <li class="{{set_active(['form/expense/reports/page','form/invoice/reports/page','form/leave/reports/page','form/daily/reports/page','form/payments/reports/page','form/employee/reports/page'])}} submenu">
+                {{-- ── التقارير ─────────────────────────── --}}
+                <li class="menu-title"><span>التقارير</span></li>
+
+                <li class="{{set_active(['form/expense/reports/page','form/invoice/reports/page','form/leave/reports/page','form/daily/reports/page','form/payments/reports/page','form/employee/reports/page','form/attendance/reports/page'])}} submenu">
                     <a href="#" class="{{ set_active(['form/expense/reports/page','form/invoice/reports/page','form/leave/reports/page','form/daily/reports/page','form/payments/reports/page','form/employee/reports/page','form/attendance/reports/page']) ? 'noti-dot' : '' }}">
                         <i class="la la-pie-chart"></i>
                         <span>التقارير</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/expense/reports/page'])}}" href="{{ route('form/expense/reports/page') }}">تقرير المصروفات</a></li>
-                        <li><a class="{{set_active(['form/invoice/reports/page'])}}" href="{{ route('form/invoice/reports/page') }}">تقرير الفواتير</a></li>
+                    <ul>
+                        <li><a class="{{set_active(['form/expense/reports/page'])}}"  href="{{ route('form/expense/reports/page') }}">تقرير المصروفات</a></li>
+                        <li><a class="{{set_active(['form/invoice/reports/page'])}}"  href="{{ route('form/invoice/reports/page') }}">تقرير الفواتير</a></li>
                         <li><a class="{{set_active(['form/payments/reports/page'])}}" href="{{ route('form/payments/reports/page') }}">تقرير المدفوعات</a></li>
                         <li><a class="{{set_active(['form/employee/reports/page'])}}" href="{{ route('form/employee/reports/page') }}">تقرير الموظفين</a></li>
-                        <li><a class="{{set_active(['form/payslip/reports/page'])}}" href="{{ route('form/payslip/reports/page') }}">تقرير قسائم الرواتب</a></li>
+                        <li><a class="{{set_active(['form/payslip/reports/page'])}}"  href="{{ route('form/payslip/reports/page') }}">تقرير قسائم الرواتب</a></li>
                         <li><a class="{{set_active(['form/attendance/reports/page'])}}" href="{{ route('form/attendance/reports/page') }}">تقرير الحضور</a></li>
-                        <li><a class="{{set_active(['form/leave/reports/page'])}}" href="{{ route('form/leave/reports/page') }}">تقرير الإجازات</a></li>
-                        <li><a class="{{set_active(['form/daily/reports/page'])}}" href="{{ route('form/daily/reports/page') }}">التقرير اليومي</a></li>
+                        <li><a class="{{set_active(['form/leave/reports/page'])}}"    href="{{ route('form/leave/reports/page') }}">تقرير الإجازات</a></li>
+                        <li><a class="{{set_active(['form/daily/reports/page'])}}"    href="{{ route('form/daily/reports/page') }}">التقرير اليومي</a></li>
                     </ul>
                 </li>
 
-                <li class="menu-title">
-                    <span>الأداء</span>
-                </li>
+                {{-- ── الأداء ───────────────────────────── --}}
+                <li class="menu-title"><span>الأداء</span></li>
 
                 <li class="{{set_active(['form/performance/indicator/page','form/performance/page','form/performance/appraisal/page'])}} submenu">
                     <a href="#" class="{{ set_active(['form/performance/indicator/page','form/performance/page','form/performance/appraisal/page']) ? 'noti-dot' : '' }}">
@@ -288,10 +532,10 @@
                         <span>الأداء</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
+                    <ul>
                         <li><a class="{{set_active(['form/performance/indicator/page'])}}" href="{{ route('form/performance/indicator/page') }}">مؤشرات الأداء</a></li>
-                        <li><a class="{{set_active(['form/performance/page'])}}" href="{{ route('form/performance/page') }}">مراجعة الأداء</a></li>
-                        <li><a class="{{set_active(['form/performance/appraisal/page'])}}" href="{{ route('form/performance/appraisal/page') }}">تقييم الأداء</a></li>
+                        <li><a class="{{set_active(['form/performance/page'])}}"            href="{{ route('form/performance/page') }}">مراجعة الأداء</a></li>
+                        <li><a class="{{set_active(['form/performance/appraisal/page'])}}"  href="{{ route('form/performance/appraisal/page') }}">تقييم الأداء</a></li>
                     </ul>
                 </li>
 
@@ -301,16 +545,15 @@
                         <span>التدريب</span>
                         <span class="menu-arrow"></span>
                     </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/training/list/page'])}}" href="{{ route('form/training/list/page') }}">قائمة الدورات</a></li>
-                        <li><a class="{{set_active(['form/trainers/list/page'])}}" href="{{ route('form/trainers/list/page') }}">المدربون</a></li>
+                    <ul>
+                        <li><a class="{{set_active(['form/training/list/page'])}}"      href="{{ route('form/training/list/page') }}">قائمة الدورات</a></li>
+                        <li><a class="{{set_active(['form/trainers/list/page'])}}"      href="{{ route('form/trainers/list/page') }}">المدربون</a></li>
                         <li><a class="{{set_active(['form/training/type/list/page'])}}" href="{{ route('form/training/type/list/page') }}">أنواع التدريب</a></li>
                     </ul>
                 </li>
 
-                <li class="menu-title">
-                    <span>الإدارة</span>
-                </li>
+                {{-- ── الإدارة ───────────────────────────── --}}
+                <li class="menu-title"><span>الإدارة</span></li>
 
                 <li class="{{set_active(['assets/page'])}}">
                     <a href="{{ route('assets/page') }}">
@@ -319,300 +562,112 @@
                     </a>
                 </li>
 
-                <li class="{{set_active([
-                    'user/dashboard/index','jobs/dashboard/index','user/dashboard/all','user/dashboard/applied/jobs',
-                    'user/dashboard/interviewing','user/dashboard/offered/jobs','user/dashboard/visited/jobs',
-                    'user/dashboard/archived/jobs','user/dashboard/save','jobs','job/applicants','job/details',
-                    'page/manage/resumes','page/shortlist/candidates','page/interview/questions','page/offer/approvals',
-                    'page/experience/level','page/candidates','page/schedule/timing','page/aptitude/result'
-                ])}} submenu">
-                    <a href="#" class="{{ set_active(['user/dashboard/index','jobs/dashboard/index','user/dashboard/all','user/dashboard/save','jobs','job/applicants','job/details']) ? 'noti-dot' : '' }}">
+                <li class="{{set_active(['user/dashboard/index','jobs/dashboard/index','jobs','job/applicants','job/details','page/manage/resumes','page/shortlist/candidates','page/interview/questions','page/offer/approvals','page/experience/level','page/candidates','page/schedule/timing','page/aptitude/result'])}} submenu">
+                    <a href="#" class="{{ set_active(['user/dashboard/index','jobs/dashboard/index','jobs','job/applicants','job/details']) ? 'noti-dot' : '' }}">
                         <i class="la la-briefcase"></i>
                         <span>الوظائف</span>
                         <span class="menu-arrow"></span>
                     </a>
-
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }} {{ (request()->is('job/applicants/*')) ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['user/dashboard/index'])}}" href="{{ route('user/dashboard/index') }}">لوحة تحكم المستخدم</a></li>
-                        <li><a class="{{set_active(['jobs/dashboard/index'])}}" href="{{ route('jobs/dashboard/index') }}">لوحة تحكم الوظائف</a></li>
-                        <li><a class="{{set_active(['jobs','job/applicants','job/details'])}} {{ (request()->is('job/applicants/*','job/details/*')) ? 'active' : '' }}" href="{{ route('jobs') }}">إدارة الوظائف</a></li>
-                        <li><a class="{{set_active(['page/manage/resumes'])}}" href="{{ route('page/manage/resumes') }}">إدارة السير الذاتية</a></li>
-                        <li><a class="{{set_active(['page/shortlist/candidates'])}}" href="{{ route('page/shortlist/candidates') }}">قائمة المرشحين المختصرة</a></li>
-                        <li><a class="{{set_active(['page/interview/questions'])}}" href="{{ route('page/interview/questions') }}">أسئلة المقابلات</a></li>
-                        <li><a class="{{set_active(['page/offer/approvals'])}}" href="{{ route('page/offer/approvals') }}">اعتماد العروض</a></li>
-                        <li><a class="{{set_active(['page/experience/level'])}}" href="{{ route('page/experience/level') }}">مستوى الخبرة</a></li>
-                        <li><a class="{{set_active(['page/candidates'])}}" href="{{ route('page/candidates') }}">قائمة المرشحين</a></li>
-                        <li><a class="{{set_active(['page/schedule/timing'])}}" href="{{ route('page/schedule/timing') }}">جدولة المواعيد</a></li>
-                        <li><a class="{{set_active(['page/aptitude/result'])}}" href="{{ route('page/aptitude/result') }}">نتائج القدرات</a></li>
+                    <ul>
+                        <li><a class="{{set_active(['user/dashboard/index'])}}"        href="{{ route('user/dashboard/index') }}">لوحة تحكم المستخدم</a></li>
+                        <li><a class="{{set_active(['jobs/dashboard/index'])}}"        href="{{ route('jobs/dashboard/index') }}">لوحة تحكم الوظائف</a></li>
+                        <li><a class="{{set_active(['jobs','job/applicants','job/details'])}} {{ request()->is('job/applicants/*','job/details/*') ? 'active' : '' }}"
+                               href="{{ route('jobs') }}">إدارة الوظائف</a></li>
+                        <li><a class="{{set_active(['page/manage/resumes'])}}"         href="{{ route('page/manage/resumes') }}">إدارة السير الذاتية</a></li>
+                        <li><a class="{{set_active(['page/shortlist/candidates'])}}"   href="{{ route('page/shortlist/candidates') }}">المرشحون المختارون</a></li>
+                        <li><a class="{{set_active(['page/interview/questions'])}}"    href="{{ route('page/interview/questions') }}">أسئلة المقابلات</a></li>
+                        <li><a class="{{set_active(['page/offer/approvals'])}}"        href="{{ route('page/offer/approvals') }}">اعتماد العروض</a></li>
+                        <li><a class="{{set_active(['page/experience/level'])}}"       href="{{ route('page/experience/level') }}">مستوى الخبرة</a></li>
+                        <li><a class="{{set_active(['page/candidates'])}}"             href="{{ route('page/candidates') }}">قائمة المرشحين</a></li>
+                        <li><a class="{{set_active(['page/schedule/timing'])}}"        href="{{ route('page/schedule/timing') }}">جدولة المواعيد</a></li>
+                        <li><a class="{{set_active(['page/aptitude/result'])}}"        href="{{ route('page/aptitude/result') }}">نتائج القدرات</a></li>
                     </ul>
                 </li>
+
             </ul>
         </div>
     </div>
 </div>
-
-{{-- Overlay للموبايل --}}
-
-
 
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+{{-- ── JavaScript: فتح/إغلاق السيدبار ─────────── --}}
+<script>
+(function () {
+    const sidebar   = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    const overlay   = document.getElementById('sidebarOverlay');
+    const body      = document.body;
+    const isMobile  = () => window.innerWidth <= 768;
 
+    // ── استعادة الحالة المحفوظة ──────────────────
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved === 'true' && !isMobile()) {
+        sidebar.classList.add('sidebar-collapsed');
+        body.classList.add('sidebar-collapsed-body');
+    }
 
+    // ── زر التبديل ───────────────────────────────
+    toggleBtn.addEventListener('click', function () {
+        if (isMobile()) {
+            sidebar.classList.toggle('mobile-open');
+            body.classList.toggle('mobile-sidebar-open');
+            overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+        } else {
+            const isCollapsed = sidebar.classList.toggle('sidebar-collapsed');
+            body.classList.toggle('sidebar-collapsed-body', isCollapsed);
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
+    });
 
-{{-- <!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-inner slimscroll">
-        <div id="sidebar-menu" class="sidebar-menu">
-            <ul>
+    // ── إغلاق عند النقر على الـ overlay (موبايل) ─
+    overlay.addEventListener('click', function () {
+        sidebar.classList.remove('mobile-open');
+        body.classList.remove('mobile-sidebar-open');
+        overlay.style.display = 'none';
+    });
 
-                <li class="menu-title">
-                    <span>الرئيسية</span>
-                </li>
+    // ── فتح/إغلاق القوائم الفرعية ────────────────
+    document.querySelectorAll('#sidebar-menu .submenu > a').forEach(function (link) {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
 
-                <li class="{{set_active(['home','em/dashboard'])}} submenu">
-                    <a href="#" class="{{ set_active(['home','em/dashboard']) ? 'noti-dot' : '' }}">
-                        <i class="la la-dashboard"></i>
-                        <span>لوحة التحكم</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['home'])}}" href="{{ route('home') }}">لوحة تحكم المدير</a></li>
-                        <li><a class="{{set_active(['em/dashboard'])}}" href="{{ route('em/dashboard') }}">لوحة تحكم الموظف</a></li>
-                    </ul>
-                </li>
+            // في وضع الإغلاق لا تفتح القوائم
+            if (sidebar.classList.contains('sidebar-collapsed') && !isMobile()) return;
 
-                @if (Auth::user()->role_name=='Admin')
-                <li class="menu-title"><span>إدارة المستخدمين</span></li>
+            const parent = this.closest('.submenu');
+            const isOpen = parent.classList.contains('open');
 
-                <li class="{{set_active(['search/user/list','userManagement','activity/log','activity/login/logout'])}} submenu">
-                    <a href="#" class="{{ set_active(['search/user/list','userManagement','activity/log','activity/login/logout']) ? 'noti-dot' : '' }}">
-                        <i class="la la-user-secret"></i>
-                        <span>إدارة المستخدمين</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['search/user/list','userManagement'])}}" href="{{ route('userManagement') }}">جميع المستخدمين</a></li>
-                    </ul>
-                </li>
-                @endif
+            // أغلق كل القوائم المفتوحة في نفس المستوى
+            const siblings = parent.parentElement.querySelectorAll(':scope > .submenu.open');
+            siblings.forEach(function (s) {
+                if (s !== parent) s.classList.remove('open');
+            });
 
-                <li class="menu-title"><span>الموظفون</span></li>
+            parent.classList.toggle('open', !isOpen);
+        });
+    });
 
-                <li class="{{set_active(['all/employee/list','all/employee/card','form/holidays/new','form/leaves/new','form/leaves/employee/new','form/leavesettings/page','attendance/page','attendance/employee/page','form/departments/page','form/designations/page','form/timesheet/page','form/shiftscheduling/page','form/overtime/page'])}} submenu">
-                    <a href="#">
-                        <i class="la la-user"></i>
-                        <span>الموظفون</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul>
-                        <li><a href="{{ route('all/employee/card') }}">جميع الموظفين</a></li>
-                        <li><a href="{{ route('form/holidays/new') }}">الإجازات الرسمية</a></li>
-                        <li><a href="{{ route('form/leaves/new') }}">طلبات الإجازة (الإدارة)</a></li>
-                        <li><a href="{{route('form/leaves/employee/new')}}">طلبات الإجازة (الموظف)</a></li>
-                        <li><a href="{{ route('form/leavesettings/page') }}">إعدادات الإجازات</a></li>
-                        <li><a href="{{ route('attendance/page') }}">الحضور والانصراف (الإدارة)</a></li>
-                        <li><a href="{{ route('attendance/employee/page') }}">الحضور والانصراف (الموظف)</a></li>
-                        <li><a href="{{ route('form/departments/page') }}">الأقسام</a></li>
-                        <li><a href="{{ route('form/designations/page') }}">المسميات الوظيفية</a></li>
-                        <li><a href="{{ route('form/timesheet/page') }}">سجل الدوام</a></li>
-                        <li><a href="{{ route('form/shiftscheduling/page') }}">الجداول والمناوبات</a></li>
-                        <li><a href="{{ route('form/overtime/page') }}">العمل الإضافي</a></li>
-                    </ul>
-                </li>
+    // ── افتح القائمة النشطة تلقائياً ─────────────
+    document.querySelectorAll('#sidebar-menu .submenu').forEach(function (item) {
+        if (item.querySelector('a.active')) {
+            item.classList.add('open');
+        }
+    });
 
-                <li class="menu-title"><span>الموارد البشرية</span></li>
+    // ── تحديث عند تغيير حجم الشاشة ──────────────
+    window.addEventListener('resize', function () {
+        if (!isMobile()) {
+            sidebar.classList.remove('mobile-open');
+            body.classList.remove('mobile-sidebar-open');
+            overlay.style.display = 'none';
 
-                <li class="{{set_active(['create/estimate/page','form/estimates/page','payments','expenses/page'])}} submenu">
-                    <a href="#">
-                        <i class="la la-files-o"></i>
-                        <span>المبيعات</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul>
-                        <li><a href="{{ route('form/estimates/page') }}">التقديرات</a></li>
-                        <li><a href="{{ route('payments') }}">المدفوعات</a></li>
-                        <li><a href="{{ route('expenses/page') }}">المصروفات</a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"><span>الرواتب</span></li>
-
-                <li class="{{set_active(['form/salary/page','form/payroll/items'])}} submenu">
-                    <a href="#"><i class="la la-money"></i>
-                        <span>الرواتب</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul>
-                        <li><a href="{{ route('form/salary/page') }}">رواتب الموظفين</a></li>
-                        <li><a href="#">قسائم الرواتب</a></li>
-                        <li><a href="{{ route('form/payroll/items') }}">بنود الرواتب</a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"><span>التقارير</span></li>
-
-                <li class="{{set_active(['form/expense/reports/page','form/invoice/reports/page','form/attendance/reports/page'])}} submenu">
-                    <a href="#"><i class="la la-pie-chart"></i>
-                        <span>التقارير</span>
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul>
-                        <li><a href="{{ route('form/expense/reports/page') }}">تقرير المصروفات</a></li>
-                        <li><a href="{{ route('form/invoice/reports/page') }}">تقرير الفواتير</a></li>
-                        <li><a href="{{ route('form/attendance/reports/page') }}">تقرير الحضور</a></li>
-                    </ul>
-                </li>
-
-            </ul>
-        </div>
-    </div>
-</div>
-<!-- /Sidebar --> --}}
-
-
-
-
-
-{{-- 
-<!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-    <div class="sidebar-inner slimscroll">
-        <div id="sidebar-menu" class="sidebar-menu">
-            <ul>
-                <li class="menu-title">
-                    <span>Main</span>
-                </li>
-                <li class="{{set_active(['home','em/dashboard'])}} submenu">
-                    <a href="#" class="{{ set_active(['home','em/dashboard']) ? 'noti-dot' : '' }}">
-                        <i class="la la-dashboard"></i>
-                        <span> Dashboard</span> <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['home'])}}" href="{{ route('home') }}">Admin Dashboard</a></li>
-                        <li><a class="{{set_active(['em/dashboard'])}}" href="{{ route('em/dashboard') }}">Employee Dashboard</a></li>
-                    </ul>
-                </li>
-                @if (Auth::user()->role_name=='Admin')
-                    <li class="menu-title"> <span>Authentication</span> </li>
-                    <li class="{{set_active(['search/user/list','userManagement','activity/log','activity/login/logout'])}} submenu">
-                        <a href="#" class="{{ set_active(['search/user/list','userManagement','activity/log','activity/login/logout']) ? 'noti-dot' : '' }}">
-                            <i class="la la-user-secret"></i> <span> User Controller</span> <span class="menu-arrow"></span>
-                        </a>
-                        <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                            <li><a class="{{set_active(['search/user/list','userManagement'])}}" href="{{ route('userManagement') }}">All User</a></li>
-                        </ul>
-                    </li>
-                @endif
-                <li class="menu-title"> <span>Employees</span> </li>
-                <li class="{{set_active(['all/employee/list','all/employee/list','all/employee/card','form/holidays/new','form/leaves/new',
-                    'form/leaves/employee/new','form/leavesettings/page','attendance/page',
-                    'attendance/employee/page','form/departments/page','form/designations/page',
-                    'form/timesheet/page','form/shiftscheduling/page','form/overtime/page'])}} submenu">
-                    <a href="#" class="{{ set_active(['all/employee/list','all/employee/card','form/holidays/new','form/leaves/new',
-                    'form/leaves/employee/new','form/leavesettings/page','attendance/page',
-                    'attendance/employee/page','form/departments/page','form/designations/page',
-                    'form/timesheet/page','form/shiftscheduling/page','form/overtime/page']) ? 'noti-dot' : '' }}">
-                        <i class="la la-user"></i> <span> Employees</span> <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['all/employee/list','all/employee/card'])}} {{ request()->is('all/employee/view/edit/*','employee/profile/*') ? 'active' : '' }}" href="{{ route('all/employee/card') }}">All Employees</a></li>
-                        <li><a class="{{set_active(['form/holidays/new'])}}" href="{{ route('form/holidays/new') }}">Holidays</a></li>
-                        <li><a class="{{set_active(['form/leaves/new'])}}" href="{{ route('form/leaves/new') }}">Leaves (Admin) 
-                            <span class="badge badge-pill bg-primary float-right">1</span></a>
-                        </li>
-                        <li><a class="{{set_active(['form/leaves/employee/new'])}}" href="{{route('form/leaves/employee/new')}}">Leaves (Employee)</a></li>
-                        <li><a class="{{set_active(['form/leavesettings/page'])}}" href="{{ route('form/leavesettings/page') }}">Leave Settings</a></li>
-                        <li><a class="{{set_active(['attendance/page'])}}" href="{{ route('attendance/page') }}">Attendance (Admin)</a></li>
-                        <li><a class="{{set_active(['attendance/employee/page'])}}" href="{{ route('attendance/employee/page') }}">Attendance (Employee)</a></li>
-                        <li><a class="{{set_active(['form/departments/page'])}}" href="{{ route('form/departments/page') }}">Departments</a></li>
-                        <li><a class="{{set_active(['form/designations/page'])}}" href="{{ route('form/designations/page') }}">Designations</a></li>
-                        <li><a class="{{set_active(['form/timesheet/page'])}}" href="{{ route('form/timesheet/page') }}">Timesheet</a></li>
-                        <li><a class="{{set_active(['form/shiftscheduling/page'])}}" href="{{ route('form/shiftscheduling/page') }}">Shift & Schedule</a></li>
-                        <li><a class="{{set_active(['form/overtime/page'])}}" href="{{ route('form/overtime/page') }}">Overtime</a></li>
-                    </ul>
-                </li>
-                <li class="menu-title"> <span>HR</span> </li>
-                <li class="{{set_active(['create/estimate/page','form/estimates/page','payments','expenses/page'])}} submenu">
-                    <a href="#" class="{{ set_active(['create/estimate/page','form/estimates/page','payments','expenses/page']) ? 'noti-dot' : '' }}">
-                        <i class="la la-files-o"></i>
-                        <span> Sales </span> 
-                        <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['create/estimate/page','form/estimates/page'])}} {{ request()->is('edit/estimate/*') ? 'active' : '' }}{{ request()->is('estimate/view/*') ? 'active' : '' }}" href="{{ route('form/estimates/page') }}">Estimates</a></li>
-                        <li><a class="{{set_active(['payments'])}}" href="{{ route('payments') }}">Payments</a></li>
-                        <li><a class="{{set_active(['expenses/page'])}}" href="{{ route('expenses/page') }}">Expenses</a></li>
-                    </ul>
-                </li>
-                <li class="{{set_active(['form/salary/page','form/payroll/items'])}} submenu">
-                    <a href="#" class="{{ set_active(['form/salary/page','form/payroll/items']) ? 'noti-dot' : '' }}"><i class="la la-money"></i>
-                    <span> Payroll </span> <span class="menu-arrow"></span></a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/salary/page'])}}" href="{{ route('form/salary/page') }}"> Employee Salary </a></li>
-                        <li><a href="{{ route('form/salary/page') }}"> Payslip </a></li>
-                        <li><a class="{{set_active(['form/payroll/items'])}}" href="{{ route('form/payroll/items') }}"> Payroll Items </a></li>
-                    </ul>
-                </li>
-                <li class="{{set_active(['form/expense/reports/page','form/invoice/reports/page','form/leave/reports/page','form/daily/reports/page','form/payments/reports/page','form/employee/reports/page'])}} submenu">
-                    <a href="#" class="{{ set_active(['form/expense/reports/page','form/invoice/reports/page','form/leave/reports/page','form/daily/reports/page','form/payments/reports/page','form/employee/reports/page','form/attendance/reports/page']) ? 'noti-dot' : '' }}"><i class="la la-pie-chart"></i>
-                    <span> Reports </span> <span class="menu-arrow"></span></a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/expense/reports/page'])}}" href="{{ route('form/expense/reports/page') }}"> Expense Report </a></li>
-                        <li><a class="{{set_active(['form/invoice/reports/page'])}}" href="{{ route('form/invoice/reports/page') }}"> Invoice Report </a></li>
-                        <li><a class="{{set_active(['form/payments/reports/page'])}}" href="{{ route('form/payments/reports/page') }}"> Payments Report </a></li>
-                        <li><a class="{{set_active(['form/employee/reports/page'])}}" href="{{ route('form/employee/reports/page') }}"> Employee Report </a></li>
-                        <li><a class="{{set_active(['form/payslip/reports/page'])}}" href="{{ route('form/payslip/reports/page') }}"> Payslip Report </a></li>
-                        <li><a class="{{set_active(['form/attendance/reports/page'])}}" href="{{ route('form/attendance/reports/page') }}"> Attendance Report </a></li>
-                        <li><a class="{{set_active(['form/leave/reports/page'])}}" href="{{ route('form/leave/reports/page') }}"> Leave Report </a></li>
-                        <li><a class="{{set_active(['form/daily/reports/page'])}}" href="{{ route('form/daily/reports/page') }}"> Daily Report </a></li>
-                    </ul>
-                </li>
-                <li class="menu-title"> <span>Performance</span> </li>
-                <li class="{{set_active(['form/performance/indicator/page','form/performance/page','form/performance/appraisal/page'])}} submenu">
-                    <a href="#" class="{{ set_active(['form/performance/indicator/page','form/performance/page','form/performance/appraisal/page']) ? 'noti-dot' : '' }}"><i class="la la-graduation-cap"></i>
-                    <span> Performance </span> <span class="menu-arrow"></span></a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/performance/indicator/page'])}}" href="{{ route('form/performance/indicator/page') }}"> Performance Indicator </a></li>
-                        <li><a class="{{set_active(['form/performance/page'])}}" href="{{ route('form/performance/page') }}"> Performance Review </a></li>
-                        <li><a class="{{set_active(['form/performance/appraisal/page'])}}" href="{{ route('form/performance/appraisal/page') }}"> Performance Appraisal </a></li>
-                    </ul>
-                </li>
-                <li class="{{set_active(['form/training/list/page','form/trainers/list/page'])}} submenu"> 
-                    <a href="#" class="{{ set_active(['form/training/list/page','form/trainers/list/page']) ? 'noti-dot' : '' }}"><i class="la la-edit"></i>
-                    <span> Training </span> <span class="menu-arrow"></span></a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['form/training/list/page'])}}" href="{{ route('form/training/list/page') }}"> Training List </a></li>
-                        <li><a class="{{set_active(['form/trainers/list/page'])}}" href="{{ route('form/trainers/list/page') }}"> Trainers</a></li>
-                        <li><a class="{{set_active(['form/training/type/list/page'])}}" href="{{ route('form/training/type/list/page') }}"> Training Type </a></li>
-                    </ul>
-                </li>
-
-                <li class="menu-title"> <span>Administration</span> </li>
-                <li class="{{set_active(['assets/page'])}}"> <a href="{{ route('assets/page') }}"><i class="la la-object-ungroup">
-                    </i> <span>Assets</span></a>
-                </li>
-
-                <li class="{{set_active(['user/dashboard/index','jobs/dashboard/index','user/dashboard/all','user/dashboard/applied/jobs','user/dashboard/interviewing','user/dashboard/offered/jobs','user/dashboard/visited/jobs','user/dashboard/archived/jobs','user/dashboard/save','jobs','job/applicants','job/details','page/manage/resumes','page/shortlist/candidates','page/interview/questions','page/offer/approvals','page/experience/level','page/candidates','page/schedule/timing','page/aptitude/result'])}} submenu">
-                    <a href="#" class="{{ set_active(['user/dashboard/index','jobs/dashboard/index','user/dashboard/all','user/dashboard/save','jobs','job/applicants','job/details']) ? 'noti-dot' : '' }}"><i class="la la-briefcase"></i>
-                        <span> Jobs </span> <span class="menu-arrow"></span>
-                    </a>
-                    <ul style="{{ request()->is('/*') ? 'display: block;' : 'display: none;' }} {{ (request()->is('job/applicants/*')) ? 'display: block;' : 'display: none;' }}">
-                        <li><a class="{{set_active(['user/dashboard/index','user/dashboard/all','user/dashboard/applied/jobs','user/dashboard/interviewing','user/dashboard/offered/jobs','user/dashboard/visited/jobs','user/dashboard/archived/jobs','user/dashboard/save'])}}" href="{{ route('user/dashboard/index') }}"> User Dasboard </a></li>
-                        <li><a class="{{set_active(['jobs/dashboard/index'])}}" href="{{ route('jobs/dashboard/index') }}"> Jobs Dasboard </a></li>
-                        <li><a class="{{set_active(['jobs','job/applicants','job/details'])}} {{ (request()->is('job/applicants/*','job/details/*')) ? 'active' : '' }}" href="{{ route('jobs') }} "> Manage Jobs </a></li>
-                        <li><a class="{{set_active(['page/manage/resumes'])}}" href="{{ route('page/manage/resumes') }}"> Manage Resumes </a></li>
-                        <li><a class="{{set_active(['page/shortlist/candidates'])}}" href="{{ route('page/shortlist/candidates') }}"> Shortlist Candidates </a></li>
-                        <li><a class="{{set_active(['page/interview/questions'])}}" href="{{ route('page/interview/questions') }}"> Interview Questions </a></li>
-                        <li><a class="{{set_active(['page/offer/approvals'])}}" href="{{ route('page/offer/approvals') }}"> Offer Approvals </a></li>
-                        <li><a class="{{set_active(['page/experience/level'])}}" href="{{ route('page/experience/level') }}"> Experience Level </a></li>
-                        <li><a class="{{set_active(['page/candidates'])}}" href="{{ route('page/candidates') }}"> Candidates List </a></li>
-                        <li><a class="{{set_active(['page/schedule/timing'])}}" href="{{ route('page/schedule/timing') }}"> Schedule timing </a></li>
-                        <li><a class="{{set_active(['page/aptitude/result'])}}" href="{{ route('page/aptitude/result') }}"> Aptitude Results </a></li>
-                    </ul>
-                </li>
-            </ul>
-        </div>
-    </div>
-</div>
-<!-- /Sidebar --> --}}
+            const saved = localStorage.getItem('sidebarCollapsed');
+            if (saved === 'true') {
+                sidebar.classList.add('sidebar-collapsed');
+                body.classList.add('sidebar-collapsed-body');
+            }
+        }
+    });
+})();
+</script>

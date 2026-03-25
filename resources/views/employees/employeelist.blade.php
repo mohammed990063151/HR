@@ -13,14 +13,14 @@
             <div class="page-header">
                 <div class="row align-items-center">
                     <div class="col">
-                        <h3 class="page-title">Employee</h3>
+                        <h3 class="page-title">الموظفين </h3>
                         <ul class="breadcrumb">
-                            <li class="breadcrumb-item"><a href="index.html">Dashboard</a></li>
-                            <li class="breadcrumb-item active">Employee</li>
+                            <li class="breadcrumb-item"><a href="index.html">لوحة التحكم</a></li>
+                            <li class="breadcrumb-item active">موظث</li>
                         </ul>
                     </div>
                     <div class="col-auto float-right ml-auto">
-                        <a href="#" class="btn add-btn" data-toggle="modal" data-target="#add_employee"><i class="fa fa-plus"></i> Add Employee</a>
+                        <a href="#" class="btn add-btn" data-toggle="modal" data-target="#add_employee"><i class="fa fa-plus"></i> إضافة موظف</a>
                         <div class="view-icons">
                             <a href="{{ route('all/employee/card') }}" class="grid-view btn btn-link active"><i class="fa fa-th"></i></a>
                             <a href="{{ route('all/employee/list') }}" class="list-view btn btn-link"><i class="fa fa-bars"></i></a>
@@ -37,23 +37,23 @@
                     <div class="col-sm-6 col-md-3">  
                         <div class="form-group form-focus">
                             <input type="text" class="form-control floating" name="employee_id">
-                            <label class="focus-label">Employee ID</label>
+                            <label class="focus-label">رقم التعريفي</label>
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-3">  
                         <div class="form-group form-focus">
-                            <input type="text" class="form-control floating">
-                            <label class="focus-label">Employee Name</label>
+                            <input type="text" class="form-control floating" name="employee_name">
+                            <label class="focus-label">اسم الموظف</label>
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-3"> 
                         <div class="form-group form-focus">
-                            <input type="text" class="form-control floating">
-                            <label class="focus-label">Position</label>
+                            <input type="text" class="form-control floating" name="position">
+                            <label class="focus-label">المنصب</label>
                         </div>
                     </div>
                     <div class="col-sm-6 col-md-3">  
-                        <button type="sumit" class="btn btn-success btn-block"> Search </button>  
+                        <button type="submit" class="btn btn-success btn-block"> بحث  </button>  
                     </div>
                 </div>
             </form>
@@ -66,13 +66,13 @@
                         <table class="table table-striped custom-table datatable">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Employee ID</th>
-                                    <th>Email</th>
-                                    <th>Mobile</th>
-                                    <th class="text-nowrap">Join Date</th>
-                                    <th>Role</th>
-                                    <th class="text-right no-sort">Action</th>
+                                    <th>الاسم</th>
+                                    <th>رقم التعريفي</th>
+                                    <th>البريد الإلكتروني</th>
+                                    <th>رقم الجوال</th>
+                                    <th class="text-nowrap">تاريخ الانضمام</th>
+                                    <th>الصلاحيات </th>
+                                    <th class="text-right no-sort">اجراءات</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -93,8 +93,8 @@
                                         <div class="dropdown dropdown-action">
                                             <a href="#" class="action-icon dropdown-toggle" data-toggle="dropdown" aria-expanded="false"><i class="material-icons">more_vert</i></a>
                                             <div class="dropdown-menu dropdown-menu-right">
-                                                <a class="dropdown-item" href="{{ url('all/employee/view/edit/'.$items->user_id) }}"><i class="fa fa-pencil m-r-5"></i> Edit</a>
-                                                <a class="dropdown-item" href="{{url('all/employee/delete/'.$items->user_id)}}"onclick="return confirm('Are you sure to want to delete it?')"><i class="fa fa-trash-o m-r-5"></i> Delete</a>
+                                                <a class="dropdown-item" href="{{ url('all/employee/view/edit/'.$items->user_id) }}"><i class="fa fa-pencil m-r-5"></i> تعديل</a>
+                                                <a class="dropdown-item" href="{{url('all/employee/delete/'.$items->user_id)}}"onclick="return confirm('Are you sure to want to delete it?')"><i class="fa fa-trash-o m-r-5"></i> حذف</a>
                                             </div>
                                         </div>
                                     </td>
@@ -113,7 +113,7 @@
             <div class="modal-dialog modal-dialog-centered modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Add Employee</h5>
+                        <h5 class="modal-title">اضافة موظف</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -124,7 +124,7 @@
                             <div class="row">
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label class="col-form-label">Full Name</label>
+                                        <label class="col-form-label">الاسم الكامل</label>
                                         <select class="select" id="name" name="name">
                                             <option value="">-- Select --</option>
                                             @foreach ($userList as $key=>$user )
@@ -136,13 +136,13 @@
                             
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label class="col-form-label">Email <span class="text-danger">*</span></label>
+                                        <label class="col-form-label">البريد الاكتروني <span class="text-danger">*</span></label>
                                         <input class="form-control" type="email" id="email" name="email" placeholder="Auto email" readonly>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label>Birth Date</label>
+                                        <label>تاريخ الميلاد</label>
                                         <div class="cal-icon">
                                             <input class="form-control datetimepicker" type="text" id="birth_date" name="birth_Date">
                                         </div>
@@ -152,20 +152,20 @@
                                     <div class="form-group">
                                         <label>Gender</label>
                                         <select class="select form-control" id="gender" name="gender">
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
+                                            <option value="Male">ذكر</option>
+                                            <option value="Female">أنثى</option>
                                         </select>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">  
                                     <div class="form-group">
-                                        <label class="col-form-label">Employee ID <span class="text-danger">*</span></label>
+                                        <label class="col-form-label"> رقم التعريفي لموظف <span class="text-danger">*</span></label>
                                         <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="Auto id employee" readonly>
                                     </div>
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label class="col-form-label">Line Manager</label>
+                                        <label class="col-form-label">مدير الخط</label>
                                         <select class="select" id="company" name="line_manager">
                                             <option selected disabled>-- Select --</option>
                                             @foreach ($userList as $key=>$user )
@@ -180,13 +180,13 @@
                                 <table class="table table-striped custom-table">
                                     <thead>
                                         <tr>
-                                            <th>Module Permission</th>
-                                            <th class="text-center">Read</th>
-                                            <th class="text-center">Write</th>
-                                            <th class="text-center">Create</th>
-                                            <th class="text-center">Delete</th>
-                                            <th class="text-center">Import</th>
-                                            <th class="text-center">Export</th>
+                                            <th>إذن الوحدة النمطية</th>
+                                            <th class="text-center">القراءة</th>
+                                            <th class="text-center">الكتابة</th>
+                                            <th class="text-center">الإنشاء</th>
+                                            <th class="text-center">الحذف</th>
+                                            <th class="text-center">الاستيراد</th>
+                                            <th class="text-center">التصدير</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -229,7 +229,7 @@
                                 </table>
                             </div>
                             <div class="submit-section">
-                                <button class="btn btn-primary submit-btn">Submit</button>
+                                <button class="btn btn-primary submit-btn">إرسال</button>
                             </div>
                         </form>
                     </div>

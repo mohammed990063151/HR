@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ZkTestController;
 use Rats\Zkteco\Lib\ZKTeco;
+use App\Http\Controllers\EmployeeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,6 +17,7 @@ use Rats\Zkteco\Lib\ZKTeco;
 |
 */
 
+Auth::routes(['register' => false]);
 // ----------- Public Routes -------------- //
 Route::get('/', function () {
     return view('auth.login');
@@ -28,7 +30,6 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-Auth::routes();
 
 Route::group(['namespace' => 'App\Http\Controllers\Auth'],function()
 {
@@ -60,6 +61,9 @@ Route::group(['namespace' => 'App\Http\Controllers\Auth'],function()
 
 Route::group(['namespace' => 'App\Http\Controllers'],function()
 {
+Route::get('/employees/attendance/modal', [LeavesController::class, 'attendanceModal'])
+        ->name('employees.attendance.modal');
+
     // ------------------------- Main Dashboard ----------------------------//
     Route::controller(HomeController::class)->group(function () {
         Route::middleware('auth')->group(function () {
@@ -221,6 +225,16 @@ Route::group(['namespace' => 'App\Http\Controllers'],function()
         });
     });
 
+      Route::controller(ZkSyncController::class)->group(function () {
+        Route::middleware('auth')->group(function () {
+            // ------------------- Employee Management Routes ---------------------
+            Route::prefix('/zk')->group(function () {
+    Route::post('/sync',   'sync')->name('zk.sync');
+Route::get('/status',  'status')->name('zk.status');
+
+   });
+ });
+    });
     // ------------------------- Form Payroll ---------------------------//
     Route::controller(PayrollController::class)->group(function () {
         Route::middleware('auth')->group(function () {
@@ -384,5 +398,7 @@ Route::get('/zk-test2', function () {
         }
     }
 
-    return response()->json($results);
+
+
+
 });

@@ -88,6 +88,7 @@ class EmployeeController extends Controller
                 return redirect()->route('all/employee/card');
             
         }catch(\Exception $e){
+            dd($e);
             DB::rollback();
             flash()->error('Add new employee fail :)');
             return redirect()->back();
