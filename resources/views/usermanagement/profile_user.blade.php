@@ -1,13 +1,248 @@
 @extends('layouts.master')
+@section('style')
+<style>
+/* —— تحسين صفحة الملف الشخصي (RTL + بدون تداخل) —— */
+.profile-page.page-wrapper {
+    padding-top: 88px;
+}
+@media (max-width: 768px) {
+    .profile-page.page-wrapper { padding-top: 76px; }
+}
+.profile-page .content.container-fluid {
+    max-width: min(1200px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(12px, 2vw, 24px);
+    padding-right: clamp(12px, 2vw, 24px);
+}
+.profile-page .page-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.profile-page .page-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: 0.35rem;
+}
+.profile-page .breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    font-size: 0.875rem;
+}
+.profile-page .breadcrumb-item + .breadcrumb-item::before {
+    float: right;
+    padding-left: 0.5rem;
+    padding-right: 0;
+}
+
+/* بطاقة الهيدر: إلغاء absolute على الصورة وإصلاح التداخل */
+.profile-page .profile-view {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1.5rem;
+    min-height: 0;
+    padding: 0.25rem 0 0.5rem;
+}
+.profile-page .profile-view .profile-img-wrap {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    flex-shrink: 0;
+    margin: 0;
+    width: 112px;
+    height: 112px;
+    border-radius: 50%;
+    background: #f1f5f9;
+    border: 3px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+.profile-page .profile-view .profile-img,
+.profile-page .profile-view .profile-img img {
+    width: 106px;
+    height: 106px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.profile-page .profile-view .profile-basic {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    flex: 1 1 260px;
+    min-width: 0;
+}
+.profile-page .profile-view .pro-edit {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+}
+.profile-page .profile-info-left {
+    text-align: right;
+}
+.profile-page .profile-info-left .user-name {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.3;
+}
+.profile-page .staff-id,
+.profile-page .doj {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+.profile-page .staff-msg {
+    margin-top: 1rem;
+}
+.profile-page .staff-msg .btn-profile-msg {
+    background: #4f46e5;
+    border-color: #4f46e5;
+    color: #fff;
+    border-radius: 10px;
+    padding: 0.45rem 1.1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+.profile-page .staff-msg .btn-profile-msg:hover {
+    background: #4338ca;
+    border-color: #4338ca;
+    color: #fff;
+}
+
+/* صفوف الحقول: شبكة بدل float */
+.profile-page .personal-info {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.profile-page .personal-info li {
+    display: grid;
+    grid-template-columns: minmax(0, 130px) minmax(0, 1fr);
+    gap: 0.75rem 1rem;
+    align-items: flex-start;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.85rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.profile-page .personal-info li:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.profile-page .personal-info li .title {
+    float: none !important;
+    width: auto !important;
+    margin: 0 !important;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #64748b;
+    line-height: 1.4;
+}
+.profile-page .personal-info li .text {
+    font-size: 0.9rem;
+    color: #1e293b;
+    text-align: right;
+    word-break: break-word;
+}
+.profile-page .pro-overview .personal-info li .title {
+    width: auto !important;
+}
+.profile-page .avatar-box {
+    float: none;
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+/* تبويبات */
+.profile-page .card.tab-box {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.profile-page .user-tabs .nav-tabs {
+    border-bottom: 1px solid #e2e8f0;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.5rem 0.75rem 0;
+}
+.profile-page .user-tabs .nav-tabs .nav-link {
+    border-radius: 10px 10px 0 0;
+    font-weight: 600;
+    color: #64748b;
+    padding: 0.65rem 1rem;
+}
+.profile-page .user-tabs .nav-tabs .nav-link.active {
+    color: #4f46e5;
+    border-color: #e2e8f0 #e2e8f0 #fff;
+    background: #fff;
+}
+.profile-page .badge-admin-mini {
+    font-size: 0.65rem;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-inline-start: 0.35rem;
+}
+
+/* بطاقات المحتوى */
+.profile-page .card.profile-box {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+}
+.profile-page .card.profile-box .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.profile-page .section-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #475569;
+    margin: 1rem 0 0.5rem;
+}
+
+@media (max-width: 767px) {
+    .profile-page .profile-view {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .profile-page .profile-view .profile-img-wrap {
+        margin: 0 auto;
+    }
+    .profile-page .profile-info-left {
+        text-align: center;
+    }
+    .profile-page .personal-info li {
+        grid-template-columns: 1fr;
+        text-align: right;
+    }
+    .profile-page .personal-info li .text {
+        text-align: right;
+    }
+}
+</style>
+@endsection
 @section('content')
-    <div class="page-wrapper">
+    <div class="page-wrapper profile-page">
         <!-- Page Content -->
         <div class="content container-fluid">
             <!-- Page Header -->
             <div class="page-header">
                 <div class="row">
                     <div class="col-sm-12">
-                        <h3 class="page-title">حساب الشخصي</h3>
+                        <h3 class="page-title">الملف الشخصي</h3>
                         <ul class="breadcrumb">
                             <li class="breadcrumb-item"><a href="{{ route('home') }}">لوحة التحكم</a></li>
                             <li class="breadcrumb-item active">الملف الشخصي</li>
@@ -17,7 +252,7 @@
             </div>
               
             <!-- /Page Header -->
-            <div class="card mb-0">
+            <div class="card mb-0 border-0 shadow-sm" style="border-radius: 12px;">
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-12">
@@ -36,9 +271,9 @@
                                                 <h3 class="user-name m-t-0 mb-0">{{ Session::get('name') }}</h3>
                                                 <h6 class="text-muted">{{ Session::get('department') }}</h6>
                                                 <small class="text-muted">{{ Session::get('position') }}</small>
-                                                <div class="staff-id">User ID : {{ Session::get('user_id') }}</div>
-                                                <div class="small doj text-muted">Date of Join : {{ Session::get('join_date') }}</div>
-                                                <div class="staff-msg"><a class="btn btn-custom" href="{{ route('chat') }}">أرسل رسالة </a></div>
+                                                <div class="staff-id">معرّف المستخدم: {{ Session::get('user_id') }}</div>
+                                                <div class="small doj text-muted">تاريخ الانضمام: {{ Session::get('join_date') }}</div>
+                                                <div class="staff-msg"><a class="btn btn-profile-msg" href="{{ route('chat') }}">أرسل رسالة</a></div>
                                             </div>
                                         </div>
                                         <div class="col-md-7">
@@ -130,13 +365,13 @@
                 </div>
             </div>
 					
-            <div class="card tab-box">
+            <div class="card tab-box mt-3">
                 <div class="row user-tabs">
                     <div class="col-lg-12 col-md-12 col-sm-12 line-tabs">
                         <ul class="nav nav-tabs nav-tabs-bottom">
                             <li class="nav-item"><a href="#emp_profile" data-toggle="tab" class="nav-link active">الملف الشخصي</a></li>
                             <li class="nav-item"><a href="#emp_projects" data-toggle="tab" class="nav-link">المشاريع</a></li>
-                            <li class="nav-item"><a href="#bank_statutory" data-toggle="tab" class="nav-link">البنك والإحصائيات <small class="text-danger">(Admin Only)</small></a></li>
+                            <li class="nav-item"><a href="#bank_statutory" data-toggle="tab" class="nav-link">البنك والإحصائيات <span class="badge badge-danger badge-admin-mini">للمدير</span></a></li>
                         </ul>
                     </div>
                 </div>

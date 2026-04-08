@@ -31,9 +31,25 @@
     $totalDepartments = DB::table('departments')->count();
     $pendingLeaves    = DB::table('leaves')->whereIn('status', ['pending','Pending'])->count();
 
-    $presentToday = DB::table('zk_attendance_logs')
-        ->whereDate('timestamp', $today)
-        ->distinct('user_id')->count('user_id');
+    // حضور اليوم: دمج بصمة ZK + بوابة الموظف (جدول attendance)
+    try {
+        $presentIdsZk = DB::table('zk_attendance_logs')
+            ->whereDate('timestamp', $today)
+            ->pluck('user_id');
+    } catch (\Exception $e) {
+        $presentIdsZk = collect();
+    }
+    try {
+        $presentIdsPortal = Schema::hasTable('attendance')
+            ? DB::table('attendance')
+                ->whereDate('date', $today->toDateString())
+                ->whereNotNull('check_in')
+                ->pluck('employee_id')
+            : collect();
+    } catch (\Exception $e) {
+        $presentIdsPortal = collect();
+    }
+    $presentToday = $presentIdsZk->merge($presentIdsPortal)->unique()->count();
 
     $absentToday = max(0, $totalEmployees - $presentToday);
 
@@ -129,9 +145,13 @@
     // الغائبون اليوم
     // ══════════════════════════════════════
     try {
-        $presentIds      = DB::table('zk_attendance_logs')->whereDate('timestamp',$today)->pluck('user_id');
-        $absentEmployees = DB::table('employees')->whereNotIn('id',$presentIds)
-            ->select('name','employee_id')->limit(5)->get();
+        $presentIdsZkA   = DB::table('zk_attendance_logs')->whereDate('timestamp', $today)->pluck('user_id');
+        $presentIdsPortA = Schema::hasTable('attendance')
+            ? DB::table('attendance')->whereDate('date', $today->toDateString())->whereNotNull('check_in')->pluck('employee_id')
+            : collect();
+        $presentIds      = $presentIdsZkA->merge($presentIdsPortA)->unique();
+        $absentEmployees = DB::table('employees')->whereNotIn('id', $presentIds)
+            ->select('name', 'employee_id')->limit(5)->get();
     } catch (\Exception $e) {
         $absentEmployees = collect();
     }
@@ -155,12 +175,18 @@
     for ($i = 6; $i >= 0; $i--) {
         $day = Carbon::now()->subDays($i);
         try {
-            $cnt = DB::table('zk_attendance_logs')
-                ->whereDate('timestamp', $day)
-                ->distinct('user_id')->count('user_id');
+            $idsZk = DB::table('zk_attendance_logs')->whereDate('timestamp', $day)->pluck('user_id');
         } catch (\Exception $e) {
-            $cnt = 0;
+            $idsZk = collect();
         }
+        try {
+            $idsPortal = Schema::hasTable('attendance')
+                ? DB::table('attendance')->whereDate('date', $day->toDateString())->whereNotNull('check_in')->pluck('employee_id')
+                : collect();
+        } catch (\Exception $e) {
+            $idsPortal = collect();
+        }
+        $cnt = $idsZk->merge($idsPortal)->unique()->count();
         $chartDays[]    = $day->locale('ar')->isoFormat('dd D/M');
         $chartPresent[] = $cnt;
         $chartAbsent[]  = max(0, $totalEmployees - $cnt);
@@ -198,7 +224,22 @@
 }
 
 /* ── Page wrapper ── */
-.hr-dash { background: var(--page-bg); min-height: 100vh; padding: 0 0 40px; }
+.page-wrapper.hr-dash {
+    background: var(--page-bg);
+    min-height: 100vh;
+    padding: 96px clamp(12px, 2vw, 24px) 40px;
+}
+@media (max-width: 768px) {
+    .page-wrapper.hr-dash { padding-top: 84px; }
+}
+.hr-dash .content.container-fluid {
+    width: 100%;
+    max-width: min(1680px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(12px, 2vw, 24px);
+    padding-right: clamp(12px, 2vw, 24px);
+}
 
 /* ── Header ── */
 .hr-header { margin-bottom: 28px; }
@@ -355,8 +396,10 @@
     .stat-body h3 { font-size: 1.35rem; }
     .stat-icon { width: 44px; height: 44px; font-size: 18px; }
 }
+@media (min-width: 1400px) {
+    .row.g-3 > [class*="col-"] { transition: transform .2s ease; }
+}
 </style>
-<br /><br /><br  />
 <div class="page-wrapper hr-dash">
 <div class="content container-fluid">
 
@@ -432,11 +475,21 @@
 
         <div class="col-md-8 anim anim-1">
             <div class="hr-card">
-                <div class="hr-card-head">
-                    <h5><i class="fa fa-bar-chart" style="color:var(--primary);font-size:.9rem;"></i> الحضور — آخر ٧ أيام</h5>
-                    <a href="{{ route('attendance/page') }}" class="btn-outline-primary">
-                        <i class="fa fa-external-link" style="font-size:.7rem;"></i> التفاصيل
-                    </a>
+                <div class="hr-card-head flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="fa fa-bar-chart" style="color:var(--primary);font-size:.9rem;"></i> الحضور — آخر ٧ أيام</h5>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <a href="{{ route('portal.index') }}" class="btn-outline-primary" title="بوابة الحضور للموظفين">
+                            <i class="fa fa-map-marker" style="font-size:.7rem;"></i> البوابة
+                        </a>
+                        @if (user_is_admin())
+                            <a href="{{ route('admin.locations.index') }}" class="btn-outline-primary" title="إدارة المواقع">
+                                <i class="fa fa-globe" style="font-size:.7rem;"></i> المواقع
+                            </a>
+                        @endif
+                        <a href="{{ route('attendance/page') }}" class="btn-outline-primary">
+                            <i class="fa fa-external-link" style="font-size:.7rem;"></i> الحضور الكلاسيكي
+                        </a>
+                    </div>
                 </div>
                 <div class="hr-card-body chart-wrap">
                     <canvas id="attendanceChart" height="115"></canvas>

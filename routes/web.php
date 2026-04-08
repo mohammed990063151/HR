@@ -5,6 +5,18 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\ZkTestController;
 use Rats\Zkteco\Lib\ZKTeco;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeePortalController;
+
+use App\Http\Controllers\Admin\LocationManagementController;
+use App\Http\Controllers\Admin\EmployeeRequestController;
+use App\Http\Controllers\Admin\AdminAttendanceController;
+use App\Http\Controllers\Admin\PortalContentController;
+use App\Http\Controllers\Admin\PortalBalanceController;
+use App\Http\Controllers\Admin\WorkPeriodController;
+use App\Http\Controllers\Admin\RequestTypeController;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\LeavesController;
+use App\Http\Controllers\LockScreen;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,10 +35,69 @@ Route::get('/', function () {
     return view('auth.login');
 });
 
-// --------- Authenticated Routes ---------- //
+// --------- Authenticated Routes (بوابة الموظف + إدارة المواقع/الطلبات) ---------- //
 Route::middleware('auth')->group(function () {
     Route::get('home', function () {
         return view('home');
+    });
+
+    Route::middleware('employee')->prefix('portal')->name('portal.')->group(function () {
+        Route::get('/', [EmployeePortalController::class, 'index'])->name('index');
+        Route::get('/attendance-board', [EmployeePortalController::class, 'attendanceBoard'])->name('attendance-board');
+        Route::get('/requests', [EmployeePortalController::class, 'requestsPage'])->name('requests');
+        Route::post('/check-in', [EmployeePortalController::class, 'checkIn'])->name('checkin');
+        Route::post('/check-out', [EmployeePortalController::class, 'checkOut'])->name('checkout');
+        Route::post('/request', [EmployeePortalController::class, 'submitRequest'])->name('request');
+        Route::get('/locations', [EmployeePortalController::class, 'getLocations'])->name('locations');
+        Route::post('/zone-status', [EmployeePortalController::class, 'zoneStatus'])->name('zone-status');
+    });
+
+    Route::prefix('admin/requests')->name('admin.requests.')->group(function () {
+        Route::get('/', [EmployeeRequestController::class, 'index'])->name('index');
+        Route::patch('/{employeeRequest}', [EmployeeRequestController::class, 'review'])->name('review');
+    });
+
+    Route::prefix('admin/attendance')->name('admin.attendance.')->group(function () {
+        Route::get('/', [AdminAttendanceController::class, 'index'])->name('index');
+        Route::get('/employee/{employee}', [AdminAttendanceController::class, 'show'])->name('show');
+    });
+
+    Route::prefix('admin/portal-content')->name('admin.portal-content.')->group(function () {
+        Route::get('/', [PortalContentController::class, 'index'])->name('index');
+        Route::post('/', [PortalContentController::class, 'store'])->name('store');
+        Route::patch('/{portalContent}/toggle', [PortalContentController::class, 'toggle'])->name('toggle');
+        Route::delete('/{portalContent}', [PortalContentController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/portal-balances')->name('admin.portal-balances.')->group(function () {
+        Route::get('/', [PortalBalanceController::class, 'index'])->name('index');
+        Route::post('/', [PortalBalanceController::class, 'store'])->name('store');
+        Route::delete('/{portalBalance}', [PortalBalanceController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/work-periods')->name('admin.work-periods.')->group(function () {
+        Route::get('/', [WorkPeriodController::class, 'index'])->name('index');
+        Route::post('/', [WorkPeriodController::class, 'store'])->name('store');
+        Route::post('/assign', [WorkPeriodController::class, 'assign'])->name('assign');
+        Route::patch('/{workPeriod}/toggle', [WorkPeriodController::class, 'toggle'])->name('toggle');
+        Route::delete('/{workPeriod}', [WorkPeriodController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/request-types')->name('admin.request-types.')->group(function () {
+        Route::get('/', [RequestTypeController::class, 'index'])->name('index');
+        Route::post('/', [RequestTypeController::class, 'store'])->name('store');
+        Route::patch('/{requestType}/toggle', [RequestTypeController::class, 'toggle'])->name('toggle');
+        Route::delete('/{requestType}', [RequestTypeController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/locations')->name('admin.locations.')->group(function () {
+        Route::get('/', [LocationManagementController::class, 'index'])->name('index');
+        Route::post('/', [LocationManagementController::class, 'store'])->name('store');
+        Route::put('/{location}', [LocationManagementController::class, 'update'])->name('update');
+        Route::delete('/{location}', [LocationManagementController::class, 'destroy'])->name('destroy');
+        Route::post('/assign/{employee}', [LocationManagementController::class, 'assignToEmployee'])->name('assign');
+        Route::get('/employee/{employee}', [LocationManagementController::class, 'employeeLocations'])->name('employee');
+        Route::patch('/toggle/{location}', [LocationManagementController::class, 'toggle'])->name('toggle');
     });
 });
 

@@ -5,7 +5,7 @@
 html[dir="rtl"] body {
     direction: rtl;
     text-align: right;
-    font-family: "Tajawal", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+    font-family: "Cairo", system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
 }
 
 
@@ -13,7 +13,8 @@ html[dir="rtl"] body {
    Sidebar (Clean Modern)
 ======================= */
 
-html[dir="rtl"] .sidebar {
+/* ملاحظة: #sidebar في sidebar.blade يحدد الارتفاع أسفل الهيدر — لا تُجبر top:0 هنا */
+html[dir="rtl"] .sidebar:not(#sidebar) {
     position: fixed;
     top: 0;
     right: 0;
@@ -21,7 +22,6 @@ html[dir="rtl"] .sidebar {
     width: 270px;
     height: 100vh;
     background: #0b1220;
-    /* أغمق شوي */
     border-left: 1px solid rgba(255, 255, 255, .06);
     z-index: 1040;
     transition: transform .28s ease;
@@ -162,7 +162,7 @@ html[dir="rtl"] .sidebar-menu .submenu>ul>li>a::before {
 @media (min-width: 992px) {
     html[dir="rtl"] .page-wrapper,
     html[dir="rtl"] .main-content {
-        margin-right: 270px;
+        margin-right: 260px;
         margin-left: 0;
     }
 }
@@ -178,7 +178,8 @@ html[dir="rtl"] .sidebar-menu .submenu>ul>li>a::before {
         /* مخفي */
         box-shadow: -24px 0 60px rgba(0, 0, 0, .45);
     }
-    html[dir="rtl"] .sidebar.open {
+    html[dir="rtl"] .sidebar.open,
+    html[dir="rtl"] .sidebar.mobile-open {
         transform: translateX(0);
     }
     html[dir="rtl"] .page-wrapper,

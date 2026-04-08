@@ -1,0 +1,148 @@
+/**
+ * واجهة عربية موحّدة: خط Cairo + اتجاه RTL
+ * يُحمّل بعد style.css و custom-rtl.css
+ */
+
+:root {
+    --font-arabic: "Cairo", "Segoe UI", Tahoma, Arial, sans-serif;
+    --app-sidebar-width: 260px;
+}
+
+/* —— أساس —— */
+html[dir="rtl"] {
+    direction: rtl;
+}
+
+html[dir="rtl"] body,
+html[dir="rtl"] .main-wrapper {
+    font-family: var(--font-arabic) !important;
+    direction: rtl;
+    text-align: right;
+}
+
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] h4,
+html[dir="rtl"] h5,
+html[dir="rtl"] h6,
+html[dir="rtl"] .h1,
+html[dir="rtl"] .h2,
+html[dir="rtl"] .h3,
+html[dir="rtl"] .page-title,
+html[dir="rtl"] .header .page-title-box h3 {
+    font-family: var(--font-arabic) !important;
+    font-weight: 700;
+}
+
+html[dir="rtl"] .header,
+html[dir="rtl"] .app-header,
+html[dir="rtl"] .page-wrapper,
+html[dir="rtl"] .content,
+html[dir="rtl"] .card,
+html[dir="rtl"] .modal-content,
+html[dir="rtl"] .dropdown-menu,
+html[dir="rtl"] .table,
+html[dir="rtl"] .form-control,
+html[dir="rtl"] .btn {
+    font-family: var(--font-arabic);
+}
+
+/* —— السيدبار: يمين → يسار —— */
+html[dir="rtl"] #sidebar,
+html[dir="rtl"] .sidebar#sidebar {
+    right: 0 !important;
+    left: auto !important;
+    direction: rtl;
+    text-align: right;
+    font-family: var(--font-arabic) !important;
+}
+
+html[dir="rtl"] #sidebar *,
+html[dir="rtl"] .sidebar#sidebar * {
+    font-family: var(--font-arabic) !important;
+}
+
+html[dir="rtl"] #sidebar .sidebar-menu ul li a,
+html[dir="rtl"] #sidebar .sidebar-menu .submenu > ul li a {
+    flex-direction: row;
+    text-align: right;
+}
+
+/* محتوى رئيسي بجانب السيدبار (يمين) */
+html[dir="rtl"] .page-wrapper,
+html[dir="rtl"] .main-content {
+    margin-right: var(--app-sidebar-width) !important;
+    margin-left: 0 !important;
+}
+
+html[dir="rtl"] body.sidebar-collapsed-body .page-wrapper,
+html[dir="rtl"] body.sidebar-collapsed-body .main-content {
+    margin-right: var(--sidebar-collapsed, 68px) !important;
+}
+
+@media (max-width: 768px) {
+    html[dir="rtl"] .page-wrapper,
+    html[dir="rtl"] .main-content {
+        margin-right: 0 !important;
+    }
+}
+
+/* قائمة الجوال */
+html[dir="rtl"] #sidebar.mobile-open {
+    right: 0 !important;
+}
+
+/* —— جداول ونماذج —— */
+html[dir="rtl"] .table th,
+html[dir="rtl"] .table td {
+    text-align: right;
+}
+
+html[dir="rtl"] .table thead th {
+    vertical-align: middle;
+}
+
+html[dir="rtl"] .form-control,
+html[dir="rtl"] .custom-select,
+html[dir="rtl"] textarea {
+    text-align: right;
+}
+
+html[dir="rtl"] .input-group > .form-control:not(:last-child) {
+    border-radius: 0 0.25rem 0.25rem 0;
+}
+
+html[dir="rtl"] .input-group > .form-control:not(:first-child) {
+    border-radius: 0.25rem 0 0 0.25rem;
+}
+
+/* —— مسار تنقل —— */
+html[dir="rtl"] .breadcrumb {
+    text-align: right;
+    direction: rtl;
+}
+
+html[dir="rtl"] .breadcrumb-item + .breadcrumb-item::before {
+    float: right;
+    padding-left: 0.5rem;
+    padding-right: 0;
+}
+
+/* —— قوائم منسدلة —— */
+html[dir="rtl"] .dropdown-menu {
+    right: 0;
+    left: auto;
+    text-align: right;
+}
+
+html[dir="rtl"] .dropdown-menu-right {
+    right: auto !important;
+    left: 0 !important;
+}
+
+/* —— أيقونات Line Awesome داخل RTL —— */
+html[dir="rtl"] .la,
+html[dir="rtl"] .fa {
+    display: inline-block;
+}

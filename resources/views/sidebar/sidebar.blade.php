@@ -2,9 +2,9 @@
      SIDEBAR - خط عربي جذاب + فتح/إغلاق سلس
      =================================================== --}}
 
-{{-- Google Fonts - Cairo للعناوين + Tajawal للنصوص --}}
+{{-- خط Cairo: يُحمّل أيضاً من layouts/master — هنا للتأكيد عند تضمين السيدبار منفرداً --}}
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 /* ── متغيرات الألوان ─────────────────────────── */
@@ -12,6 +12,7 @@
     --sidebar-bg:        #0f172a;
     --sidebar-width:     260px;
     --sidebar-collapsed: 68px;
+    --app-header-height: 72px;
     --accent:            #6366f1;
     --accent-light:      #818cf8;
     --accent-glow:       rgba(99,102,241,0.18);
@@ -27,21 +28,17 @@
 /* ── الخطوط ──────────────────────────────────── */
 #sidebar,
 #sidebar * {
-    font-family: 'Tajawal', 'Cairo', sans-serif !important;
-}
-
-#sidebar .menu-title span,
-#sidebar .sidebar-menu > ul > li > a > span:first-of-type {
     font-family: 'Cairo', sans-serif !important;
 }
 
-/* ── الهيكل الأساسي ──────────────────────────── */
+/* ── الهيكل الأساسي — يبدأ أسفل الهيدر الثابت ──────────────────────────── */
 #sidebar {
     width: var(--sidebar-width);
     background: var(--sidebar-bg);
     position: fixed;
-    top: 0; right: 0;
-    height: 100vh;
+    top: var(--app-header-height);
+    right: 0;
+    height: calc(100vh - var(--app-header-height));
     z-index: 1000;
     transition: width var(--transition);
     overflow: hidden;
@@ -80,7 +77,7 @@
 /* ── زر التبديل ──────────────────────────────── */
 #sidebar-toggle-btn {
     position: fixed;
-    top: 18px;
+    top: calc(var(--app-header-height) + 14px);
     right: calc(var(--sidebar-width) - 14px);
     z-index: 1100;
     width: 28px;
@@ -276,6 +273,9 @@ body.sidebar-collapsed-body #sidebar-toggle-btn {
 }
 
 .sidebar-menu .submenu > ul li a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 8px 12px 8px 12px;
     font-size: 13px;
     font-weight: 400;
@@ -283,6 +283,14 @@ body.sidebar-collapsed-body #sidebar-toggle-btn {
     border-radius: 8px;
     margin-right: 28px;
     position: relative;
+}
+.sidebar-menu .submenu > ul li a > i.submenu-ico {
+    font-size: 16px;
+    width: 22px;
+    text-align: center;
+    opacity: 0.9;
+    flex-shrink: 0;
+    color: var(--accent-light);
 }
 
 .sidebar-menu .submenu > ul li a::before {
@@ -347,6 +355,8 @@ body.sidebar-collapsed-body #sidebar-toggle-btn {
 @media (max-width: 768px) {
     #sidebar {
         width: var(--sidebar-width) !important;
+        top: var(--app-header-height);
+        height: calc(100vh - var(--app-header-height));
         right: calc(-1 * var(--sidebar-width));
         transition: right var(--transition);
     }
@@ -359,7 +369,7 @@ body.sidebar-collapsed-body #sidebar-toggle-btn {
     }
     #sidebar-toggle-btn {
         right: 12px;
-        top: 16px;
+        top: calc(var(--app-header-height) + 10px);
     }
     body.mobile-sidebar-open #sidebar-toggle-btn {
         right: calc(var(--sidebar-width) - 14px);
@@ -409,13 +419,74 @@ body.sidebar-collapsed-body .page-wrapper {
                         <span class="menu-arrow"></span>
                     </a>
                     <ul>
-                        <li><a class="{{set_active(['home'])}}" href="{{ route('home') }}">لوحة تحكم المدير</a></li>
-                        <li><a class="{{set_active(['em/dashboard'])}}" href="{{ route('em/dashboard') }}">لوحة تحكم الموظف</a></li>
+                        <li><a class="{{set_active(['home'])}}" href="{{ route('home') }}"><i class="la la-tachometer-alt submenu-ico"></i><span>لوحة تحكم المدير</span></a></li>
+                        <li><a class="{{set_active(['em/dashboard'])}}" href="{{ route('em/dashboard') }}"><i class="la la-user-tie submenu-ico"></i><span>لوحة تحكم الموظف</span></a></li>
+                    </ul>
+                </li>
+
+                {{-- ── الحضور والمواقع (بوابة + إدارة دوائر GPS) ───────────────── --}}
+                <li class="menu-title"><span>الحضور والمواقع</span></li>
+
+                <li class="submenu {{ sidebar_portal_zone_active() ? 'open' : '' }}">
+                    <a href="#" class="{{ sidebar_portal_zone_active() ? 'active' : '' }}">
+                        <i class="la la-map-marked-alt"></i>
+                        <span>البوابة والمواقع</span>
+                        <span class="menu-arrow"></span>
+                    </a>
+                    <ul>
+                        <li>
+                            <a class="{{ request()->is('portal') ? 'active' : '' }}" href="{{ route('portal.index') }}">
+                                <i class="la la-door-open submenu-ico"></i>
+                                <span>بوابة الموظف <small style="opacity:.75;">(حضور/انصراف)</small></span>
+                            </a>
+                        </li>
+                        @if (user_is_admin())
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/locations') ? 'active' : '' }}" href="{{ route('admin.locations.index') }}">
+                                    <i class="la la-globe submenu-ico"></i>
+                                    <span>إدارة المواقع الجغرافية</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/requests') ? 'active' : '' }}" href="{{ route('admin.requests.index') }}">
+                                    <i class="la la-inbox submenu-ico"></i>
+                                    <span>طلبات الموظفين</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/attendance') ? 'active' : '' }}" href="{{ route('admin.attendance.index') }}">
+                                    <i class="la la-calendar-check submenu-ico"></i>
+                                    <span>حضور جميع الموظفين</span>
+                                    <span class="badge bg-success">جديد</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/portal-content') ? 'active' : '' }}" href="{{ route('admin.portal-content.index') }}">
+                                    <i class="la la-bullhorn submenu-ico"></i>
+                                    <span>إعلانات ومناسبات الموظفين</span>
+                                    <span class="badge bg-success">جديد</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/portal-balances') ? 'active' : '' }}" href="{{ route('admin.portal-balances.index') }}">
+                                    <i class="la la-wallet submenu-ico"></i>
+                                    <span>رصيد بوابة الموظف</span>
+                                    <span class="badge bg-success">جديد</span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/work-periods') ? 'active' : '' }}" href="{{ route('admin.work-periods.index') }}">
+                                    <i class="la la-clock submenu-ico"></i>
+                                    <span>فترات العمل</span>
+                                    <span class="badge bg-success">جديد</span>
+                                </a>
+                            </li>
+                        @endif
                     </ul>
                 </li>
 
                 {{-- ── الصلاحيات ───────────────────────── --}}
-                @if (Auth::user()->role_name == 'Admin')
+                @if (user_is_admin())
                     <li class="menu-title"><span>الصلاحيات</span></li>
 
                     <li class="{{set_active(['search/user/list','userManagement','activity/log','activity/login/logout'])}} submenu">
@@ -469,13 +540,13 @@ body.sidebar-collapsed-body .page-wrapper {
                     </ul>
                 </li>
 
-                {{-- ── الموارد البشرية ──────────────────── --}}
-                <li class="menu-title"><span>الموارد البشرية</span></li>
+                {{-- ── المبيعات والمالية ──────────────────── --}}
+                <li class="menu-title"><span>المبيعات والمالية</span></li>
 
                 <li class="{{set_active(['create/estimate/page','form/estimates/page','payments','expenses/page'])}} submenu">
                     <a href="#" class="{{ set_active(['create/estimate/page','form/estimates/page','payments','expenses/page']) ? 'noti-dot' : '' }}">
                         <i class="la la-files-o"></i>
-                        <span>المبيعات</span>
+                        <span>التقديرات والمدفوعات</span>
                         <span class="menu-arrow"></span>
                     </a>
                     <ul>

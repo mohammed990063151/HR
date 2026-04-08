@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
@@ -8,6 +8,9 @@
         <meta name="author" content="Soeng Souy">
         <meta name="robots" content="noindex, nofollow">
         <title>Settings - HRMS</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 		<!-- Favicon -->
         <link rel="shortcut icon" type="image/x-icon" href="{{ URL::to('assets/img/favicon.png') }}">
 		<!-- Bootstrap CSS -->
@@ -20,6 +23,8 @@
 		<link rel="stylesheet" href="{{ URL::to('assets/css/select2.min.css') }}">
 		<!-- Main CSS -->
         <link rel="stylesheet" href="{{ URL::to('assets/css/style.css') }}">
+        <link rel="stylesheet" href="{{ URL::to('assets/css/custom-rtl.css') }}">
+        <link rel="stylesheet" href="{{ URL::to('assets/css/app-arabic.css') }}">
 
     </head>
 	@yield('style')
@@ -28,7 +33,7 @@
 			color: red;
 		}
 	</style>
-    <body>
+    <body class="rtl-layout">
 		<!-- Main Wrapper -->
         <div class="main-wrapper">
 			<!-- Header -->

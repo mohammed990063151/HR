@@ -11,6 +11,9 @@
 	<meta name="robots" content="noindex, nofollow">
 	<meta name="csrf-token" content="{{ csrf_token() }}">
 	<title>Dashboard - HRMS</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 	<!-- Favicon -->
 	<link rel="shortcut icon" type="image/x-icon" href="{{ URL::to('assets/img/favicon.png') }}">
 	<!-- Bootstrap CSS -->
@@ -28,14 +31,37 @@
 	<!-- Main CSS -->
 	<link rel="stylesheet" href="{{ URL::to('assets/css/style.css') }}">
 	<link rel="stylesheet" href="{{ URL::to('assets/css/custom-rtl.css') }}">
+	<link rel="stylesheet" href="{{ URL::to('assets/css/app-arabic.css') }}">
 
 </head>
 
-<body>
+<body class="rtl-layout">
 	@yield('style')
 	<style>
-/* RTL أساساً (لو شغلك عربي) */
-html[dir="rtl"] body { direction: rtl; text-align: right; }
+:root {
+	--app-header-height: 72px;
+	--app-sidebar-width: 260px;
+}
+/* RTL + خط القالب (Cairo يُكمّل من app-arabic.css) */
+html[dir="rtl"] body { direction: rtl; text-align: right; font-family: "Cairo", "Segoe UI", Tahoma, sans-serif; }
+
+/* هيكل عام: فصل واضح بين الهيدر والمحتوى */
+.main-wrapper {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: #f1f5f9;
+}
+.app-header {
+	position: sticky;
+	top: 0;
+	z-index: 1040;
+	flex-shrink: 0;
+	background: #fff;
+	border-bottom: 1px solid #e2e8f0;
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+	min-height: var(--app-header-height);
+}
 
 /* Sidebar Container */
 .sidebar {
@@ -149,11 +175,56 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
     left: auto;
 }
 
-/* Content spacing */
+/* Content spacing — يُكمّل مع السيدبار في sidebar.blade */
 .main-content,
 .page-wrapper {
-    margin-right: 260px;
+    margin-right: var(--app-sidebar-width);
     margin-left: 0;
+}
+@media (max-width: 768px) {
+	.main-content,
+	.page-wrapper {
+		margin-right: 0 !important;
+	}
+}
+
+/* اختصارات داشبورد في الهيدر */
+.header-dashboard-shortcuts {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+}
+.header-dashboard-shortcuts .hdr-shortcut {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	color: #64748b;
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	transition: color .2s, background .2s, border-color .2s, transform .15s;
+	text-decoration: none !important;
+}
+.header-dashboard-shortcuts .hdr-shortcut:hover {
+	color: #4f46e5;
+	background: rgba(79, 70, 229, 0.08);
+	border-color: rgba(79, 70, 229, 0.35);
+	transform: translateY(-1px);
+}
+.header-dashboard-shortcuts .hdr-shortcut i {
+	font-size: 1.35rem;
+	line-height: 1;
+}
+.header-dashboard-shortcuts .hdr-shortcut.active {
+	color: #4f46e5;
+	background: rgba(79, 70, 229, 0.12);
+	border-color: #4f46e5;
 }
 
 </style>
@@ -178,8 +249,9 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
   justify-content: space-between;
   gap: .75rem;
   flex-wrap: wrap;
-  padding: .75rem 1rem;
-  height: 75px !important
+  padding: .65rem 1rem;
+  min-height: var(--app-header-height);
+  height: auto !important;
 }
 
 /* left area in RTL becomes visually right */
@@ -190,14 +262,21 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
   gap: .5rem;
 }
 
+#toggle_btn.desktop-sidebar-toggle {
+  order: 2;
+  flex-shrink: 0;
+}
 .page-title-box { 
-  order: 2; 
-  min-width: 180px;
+  order: 3; 
+  min-width: 0;
   flex: 1;
+}
+.header-dashboard-shortcuts {
+  order: 4;
 }
 
 .user-menu { 
-  order: 3; 
+  order: 5; 
   display: flex; 
   align-items: center; 
   gap: .5rem;
@@ -220,7 +299,8 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
 
 /* small screens */
 @media (max-width: 992px) {
-  .page-title-box { display: none; } /* اختياري */
+  .page-title-box { display: none; }
+  .header-dashboard-shortcuts { display: none !important; }
   .top-nav-search input { width: 140px; }
 }
 
@@ -244,24 +324,24 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
 				</div>
 			</div>
 		</div>
+		<header class="app-header">
 		<div class="header">
 
   {{-- Logo --}}
   <div class="header-left">
-    <a href="{{ route('home') }}" class="logo d-flex align-items-center">
+    <a href="{{ route('home') }}" class="logo d-flex align-items-center" title="لوحة التحكم">
       <img src="{{ URL::to('/assets/images/'. Auth::user()->avatar) }}"
            width="40" height="40" alt="شعار" style="border-radius: 50%;">
     </a>
 
     {{-- Mobile sidebar button --}}
-    <a id="mobile_btn" class="mobile_btn d-lg-none ms-2" href="#sidebar" aria-label="القائمة">
+    <a id="mobile_btn" class="mobile_btn d-lg-none ms-2" href="#sidebar" aria-label="فتح القائمة">
       <i class="fa fa-bars"></i>
     </a>
   </div>
 
   {{-- Desktop toggle --}}
   <a id="toggle_btn" class="d-none d-lg-inline-flex desktop-sidebar-toggle" href="javascript:void(0);" aria-label="تصغير القائمة">
-	
     <span class="bar-icon">
       <span></span><span></span><span></span>
     </span>
@@ -269,7 +349,25 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
 
   {{-- Title --}}
   <div class="page-title-box">
-    <h3 class="mb-0">مرحبًا، {{ Session::get('name') }}</h3>
+    <h3 class="mb-0 text-truncate" style="max-width: 280px;">مرحبًا، {{ Session::get('name') }}</h3>
+  </div>
+
+  {{-- أيقونات داشبورد سريعة --}}
+  <div class="header-dashboard-shortcuts d-none d-lg-flex" aria-label="اختصارات لوحة التحكم">
+    <a href="{{ route('home') }}" class="hdr-shortcut {{ request()->routeIs('home') ? 'active' : '' }}" title="لوحة المدير">
+      <i class="la la-tachometer-alt"></i>
+    </a>
+    <a href="{{ route('em/dashboard') }}" class="hdr-shortcut {{ request()->routeIs('em/dashboard') ? 'active' : '' }}" title="لوحة الموظف">
+      <i class="la la-user-tie"></i>
+    </a>
+    <a href="{{ route('portal.index') }}" class="hdr-shortcut {{ request()->routeIs('portal.*') ? 'active' : '' }}" title="بوابة الحضور">
+      <i class="la la-map-marked-alt"></i>
+    </a>
+    @if(user_is_admin())
+    <a href="{{ route('admin.locations.index') }}" class="hdr-shortcut {{ request()->routeIs('admin.locations.*') ? 'active' : '' }}" title="المواقع الجغرافية">
+      <i class="la la-globe"></i>
+    </a>
+    @endif
   </div>
 
   {{-- Header Menu --}}
@@ -405,6 +503,7 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
   </ul>
 
 </div>
+		</header>
 
 		<!-- /Header -->
 		<!-- Sidebar -->
@@ -450,28 +549,28 @@ html[dir="ltr"] .sidebar-menu .menu-arrow { margin-left: auto; margin-right: 0; 
   const overlay = document.getElementById('sidebarOverlay');
   const mobileBtn = document.getElementById('mobile_btn');
 
-  if (!sidebar || !overlay || !mobileBtn) return;
+  if (!sidebar || !mobileBtn) return;
 
   function openSidebar() {
-    sidebar.classList.add('open');
-    overlay.classList.add('show');
-    document.body.classList.add('sidebar-open');
+    sidebar.classList.add('mobile-open');
+    document.body.classList.add('mobile-sidebar-open');
+    if (overlay) overlay.style.display = 'block';
   }
 
   function closeSidebar() {
-    sidebar.classList.remove('open');
-    overlay.classList.remove('show');
-    document.body.classList.remove('sidebar-open');
+    sidebar.classList.remove('mobile-open');
+    document.body.classList.remove('mobile-sidebar-open');
+    if (overlay) overlay.style.display = 'none';
   }
 
   mobileBtn.addEventListener('click', function(e){
     e.preventDefault();
-    openSidebar();
+    if (sidebar.classList.contains('mobile-open')) closeSidebar();
+    else openSidebar();
   });
 
-  overlay.addEventListener('click', closeSidebar);
+  if (overlay) overlay.addEventListener('click', closeSidebar);
 
-  // اغلاق بالـ ESC
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') closeSidebar();
   });
