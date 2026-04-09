@@ -38,10 +38,16 @@ class EmployeeRequest extends Model
 
     public function typeLabel(): string
     {
+        $dynamic = RequestType::query()->where('code', $this->type)->value('name');
+        if ($dynamic) {
+            return $dynamic;
+        }
+
         return match ($this->type) {
             'permission' => 'استئذان',
             'late' => 'تأخير',
             'absence' => 'غياب',
+            'correction' => 'طلب تصحيح',
             default => $this->type,
         };
     }

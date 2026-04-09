@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\EmployeeRequest;
+use App\Models\RequestType;
 use App\Models\PortalBalance;
 use App\Models\PortalContent;
 use App\Models\WorkPeriod;
@@ -34,6 +35,12 @@ class EmployeePortalController extends Controller
         $requests = EmployeeRequest::where('employee_id', $employeeId)
             ->orderByDesc('created_at')
             ->limit(10)
+            ->get();
+
+        $requestTypes = RequestType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
         $month = (int) $request->get('month', now()->month);
@@ -128,6 +135,7 @@ class EmployeePortalController extends Controller
             'todayRecord',
             'stats',
             'requests',
+            'requestTypes',
             'attendance',
             'employeeName',
             'month',
@@ -139,6 +147,43 @@ class EmployeePortalController extends Controller
             'workPeriods',
             'todayReport',
             'weekReport',
+        ));
+    }
+
+    public function requestsPage(Request $request)
+    {
+        $employeeId = (int) $request->attributes->get('employee_id');
+        $status = (string) $request->get('status', '');
+        $type = (string) $request->get('type', '');
+        $sort = (string) $request->get('sort', 'newest');
+
+        $query = EmployeeRequest::query()->where('employee_id', $employeeId);
+
+        if ($status !== '') {
+            $query->where('status', $status);
+        }
+        if ($type !== '') {
+            $query->where('type', $type);
+        }
+
+        $sort === 'oldest'
+            ? $query->orderBy('created_at')
+            : $query->orderByDesc('created_at');
+
+        $requests = $query->paginate(10)->withQueryString();
+
+        $requestTypes = RequestType::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return view('front.employees.requests', compact(
+            'requests',
+            'requestTypes',
+            'status',
+            'type',
+            'sort'
         ));
     }
 
@@ -246,19 +291,31 @@ class EmployeePortalController extends Controller
 
     public function submitRequest(Request $request)
     {
+        $allowedTypes = RequestType::query()
+            ->where('is_active', true)
+            ->pluck('code')
+            ->all();
+
+        if (empty($allowedTypes)) {
+            $allowedTypes = ['permission', 'late', 'absence', 'correction'];
+        }
+
         $validated = $request->validate([
-            'type' => 'required|in:permission,late,absence',
+            'type' => 'required|string|in:'.implode(',', $allowedTypes),
             'date' => 'required|date|after_or_equal:today',
             'from_time' => 'nullable|date_format:H:i',
             'to_time' => 'nullable|date_format:H:i',
             'reason' => 'required|string|min:10|max:2000',
         ]);
 
-        if (in_array($validated['type'], ['permission', 'late'], true)) {
+        $selectedType = RequestType::query()->where('code', $validated['type'])->first();
+        $requiresTime = $selectedType ? (bool) $selectedType->requires_time : in_array($validated['type'], ['permission', 'late'], true);
+
+        if ($requiresTime) {
             if (empty($validated['from_time']) || empty($validated['to_time'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'يجب تحديد وقت من/إلى لطلب الاستئذان أو التأخير.',
+                    'message' => 'يجب تحديد وقت من/إلى لهذا النوع من الطلبات.',
                 ], 422);
             }
             if ($validated['to_time'] <= $validated['from_time']) {

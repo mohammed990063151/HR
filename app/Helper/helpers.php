@@ -34,5 +34,6 @@ function sidebar_portal_zone_active(): bool
         || str_starts_with($p, 'admin/attendance')
         || str_starts_with($p, 'admin/portal-content')
         || str_starts_with($p, 'admin/portal-balances')
-        || str_starts_with($p, 'admin/work-periods');
+        || str_starts_with($p, 'admin/work-periods')
+        || str_starts_with($p, 'admin/request-types');
 }

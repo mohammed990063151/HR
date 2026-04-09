@@ -337,6 +337,9 @@ textarea.form-control{resize:vertical;min-height:80px;}
 
     <div class="card">
         <div class="card-title">الطلبات</div>
+        <div style="margin-bottom:10px;">
+            <a href="{{ route('portal.requests') }}" style="font-size:.78rem;color:var(--accent);text-decoration:none;">عرض صفحة الطلبات الكاملة</a>
+        </div>
         <div class="tab-bar">
             <button type="button" class="tab-btn active" onclick="switchTab('new', this)">طلب جديد</button>
             <button type="button" class="tab-btn" onclick="switchTab('list', this)">طلباتي ({{ $requests->count() }})</button>
@@ -347,9 +350,12 @@ textarea.form-control{resize:vertical;min-height:80px;}
             <div class="form-group">
                 <label>نوع الطلب</label>
                 <select class="form-control" id="req-type" onchange="toggleTimeFields()">
-                    <option value="permission">استئذان</option>
-                    <option value="late">تأخير دخول</option>
-                    <option value="absence">غياب</option>
+                    @forelse($requestTypes as $type)
+                        <option value="{{ $type->code }}" data-requires-time="{{ $type->requires_time ? '1' : '0' }}">{{ $type->name }}</option>
+                    @empty
+                        <option value="permission" data-requires-time="1">استئذان</option>
+                        <option value="correction" data-requires-time="0">طلب تصحيح</option>
+                    @endforelse
                 </select>
             </div>
             <div class="form-group">
@@ -946,8 +952,8 @@ function switchTab(name, el){
 }
 
 function toggleTimeFields(){
-    const type  = document.getElementById('req-type').value;
-    const show  = ['permission','late'].includes(type);
+    const selected = document.getElementById('req-type').selectedOptions[0];
+    const show = selected?.dataset?.requiresTime === '1';
     document.getElementById('time-fields').style.display = show ? 'grid' : 'none';
 }
 toggleTimeFields();

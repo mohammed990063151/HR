@@ -481,6 +481,13 @@ body.sidebar-collapsed-body .page-wrapper {
                                     <span class="badge bg-success">جديد</span>
                                 </a>
                             </li>
+                            <li>
+                                <a class="{{ str_starts_with(request()->path(), 'admin/request-types') ? 'active' : '' }}" href="{{ route('admin.request-types.index') }}">
+                                    <i class="la la-tags submenu-ico"></i>
+                                    <span>أنواع الطلبات</span>
+                                    <span class="badge bg-success">جديد</span>
+                                </a>
+                            </li>
                         @endif
                     </ul>
                 </li>
